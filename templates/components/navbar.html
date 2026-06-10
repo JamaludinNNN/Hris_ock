@@ -1,0 +1,31 @@
+<header class="h-16 fixed top-0 right-0 left-[260px] z-40 bg-surface dark:bg-on-background border-b border-outline-variant dark:border-outline flex justify-between items-center px-md">
+    <div class="flex items-center gap-md">
+        <button class="md:hidden material-symbols-outlined text-secondary hover:text-primary transition-all duration-200 active:scale-90 flex items-center justify-center" id="sidebar-toggle-btn" onclick="toggleSidebar(true)">menu</button>
+        <div class="relative group hidden sm:block">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary" data-icon="search">search</span>
+            <input class="pl-10 pr-4 py-1.5 rounded-full bg-surface-container-low border-none focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Search employees..." type="text"/>
+        </div>
+    </div>
+    <div class="flex items-center gap-md">
+        <button class="material-symbols-outlined text-secondary hover:text-primary transition-all duration-200" data-icon="notifications">notifications</button>
+        <button class="material-symbols-outlined text-secondary hover:text-primary transition-all duration-200" data-icon="help">help</button>
+        <div class="h-8 w-px bg-outline-variant"></div>
+        <div class="flex items-center gap-sm cursor-pointer group">
+            <div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold border-2 border-transparent group-hover:border-primary transition-all">
+                {{ request.user.employee_profile.fullname|make_list|first|default:request.user.username|make_list|first }}
+            </div>
+            <div class="hidden lg:block">
+                <p class="font-label-md text-label-md leading-none text-on-surface font-bold">
+                    {{ request.user.employee_profile.fullname|default:request.user.username }}
+                </p>
+                <p class="font-label-sm text-secondary text-[10px] uppercase tracking-wider mt-0.5">
+                    {% if request.user.role == 'admin' or request.user.is_superuser %}
+                        HRD / Admin - {{ request.user.employee_profile.position|default:"System Admin" }}
+                    {% else %}
+                        Karyawan - {{ request.user.employee_profile.position|default:"Staff" }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+</header>

@@ -1,0 +1,344 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Attendance Pro - Admin Dashboard</title>
+<script src="{% static 'js/tailwind.js' %}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "tertiary": "#004b59",
+                        "surface-dim": "#d9dadc",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed": "#001f27",
+                        "surface-bright": "#f8f9fb",
+                        "secondary": "#535f73",
+                        "surface-tint": "#0c56d0",
+                        "primary-fixed": "#dae2ff",
+                        "tertiary-fixed": "#afecff",
+                        "surface-container-low": "#f3f4f6",
+                        "outline": "#737685",
+                        "primary": "#003d9b",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#0052cc",
+                        "tertiary-container": "#006477",
+                        "surface-container-high": "#e7e8ea",
+                        "on-primary-fixed": "#001848",
+                        "inverse-on-surface": "#f0f1f3",
+                        "on-surface-variant": "#434654",
+                        "on-surface": "#191c1e",
+                        "on-secondary-fixed": "#101c2d",
+                        "surface-variant": "#e1e2e4",
+                        "inverse-surface": "#2e3132",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#48d7f9",
+                        "on-error-container": "#93000a",
+                        "background": "#f8f9fb",
+                        "surface-container-highest": "#e1e2e4",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b2c5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "secondary-container": "#d4e0f8",
+                        "on-secondary-fixed-variant": "#3b475b",
+                        "secondary-fixed": "#d7e3fb",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#c4d2ff",
+                        "on-tertiary-container": "#76e2ff",
+                        "surface-container": "#edeef0",
+                        "on-secondary-container": "#576377",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#c3c6d6",
+                        "surface": "#f8f9fb",
+                        "on-primary-fixed-variant": "#0040a2",
+                        "secondary-fixed-dim": "#bbc7de",
+                        "on-tertiary-fixed-variant": "#004e5d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "sm": "12px",
+                        "lg": "40px",
+                        "xl": "64px",
+                        "container-max": "1440px",
+                        "base": "8px",
+                        "md": "24px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background">
+<!-- SideNavBar Shell -->
+{% include "components/sidebar.html" %}
+<!-- Main Content Area -->
+<main class="ml-[260px] min-h-screen flex flex-col">
+<!-- TopNavBar Shell -->
+{% include "components/navbar.html" %}
+<!-- Page Content -->
+<section class="mt-16 p-md lg:p-lg space-y-lg max-w-container-max mx-auto w-full">
+<!-- Headline Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Dashboard Overview</h2>
+<p class="font-body-md text-secondary">Monitoring real-time presence and analytics for today.</p>
+</div>
+<form method="GET" action="{% url 'dashboard' %}" class="flex items-center gap-sm" id="dashboard-date-form">
+    <div class="relative">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">calendar_today</span>
+        <input type="date" name="date" id="dashboard-date-input" value="{{ selected_date }}" onchange="document.getElementById('dashboard-date-form').submit()" class="pl-10 pr-4 py-1.5 rounded-lg border border-outline-variant bg-surface-container-low text-body-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+    </div>
+</form>
+</div>
+<!-- Stat Cards: Bento Style -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Total Karyawan -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-sm">
+<div class="p-sm bg-primary-fixed rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="groups">groups</span>
+</div>
+<span class="text-tertiary font-label-sm bg-tertiary-fixed px-2 py-0.5 rounded-full">+12 New</span>
+</div>
+<p class="font-label-md text-secondary">Total Karyawan</p>
+<h3 class="font-display-lg text-display-lg text-on-surface mt-xs">{{ total_karyawan }}</h3>
+<div class="absolute bottom-0 right-0 w-24 h-24 bg-primary/5 rounded-full translate-x-12 translate-y-12"></div>
+</div>
+<!-- Hadir Hari Ini -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-sm">
+<div class="p-sm bg-tertiary-fixed rounded-lg">
+<span class="material-symbols-outlined text-tertiary" data-icon="check_circle">check_circle</span>
+</div>
+<span class="text-on-primary-fixed-variant font-label-sm bg-primary-fixed px-2 py-0.5 rounded-full">94% Active</span>
+</div>
+<p class="font-label-md text-secondary">Hadir Hari Ini</p>
+<h3 class="font-display-lg text-display-lg text-on-surface mt-xs">{{ hadir_hari_ini }}</h3>
+<div class="absolute bottom-0 right-0 w-24 h-24 bg-tertiary/5 rounded-full translate-x-12 translate-y-12"></div>
+</div>
+<!-- Terlambat -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="flex justify-between items-start mb-sm">
+<div class="p-sm bg-error-container rounded-lg">
+<span class="material-symbols-outlined text-error" data-icon="schedule">schedule</span>
+</div>
+<span class="text-error font-label-sm bg-error-container px-2 py-0.5 rounded-full">Alert</span>
+</div>
+<p class="font-label-md text-secondary">Terlambat</p>
+<h3 class="font-display-lg text-display-lg text-on-surface mt-xs">{{ terlambat }}</h3>
+<div class="absolute bottom-0 right-0 w-24 h-24 bg-error/5 rounded-full translate-x-12 translate-y-12"></div>
+</div>
+</div>
+<!-- Charts & Quick Actions -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-md">
+<!-- Trend Chart -->
+<div class="lg:col-span-2 bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm">
+<div class="flex justify-between items-center mb-md">
+<h4 class="font-headline-md text-body-lg font-bold text-on-surface">Attendance Trends</h4>
+<select class="bg-surface-container-low border-none text-label-md rounded-lg focus:ring-primary">
+<option>Last 7 Days</option>
+<option>Last 30 Days</option>
+</select>
+</div>
+<div class="h-[300px] w-full">
+<canvas id="attendanceChart"></canvas>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col">
+<h4 class="font-headline-md text-body-lg font-bold text-on-surface mb-md">Quick Actions</h4>
+<div class="space-y-sm">
+<button class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-primary-fixed transition-colors rounded-xl group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined p-sm bg-white rounded-lg text-primary" data-icon="person_add">person_add</span>
+<div class="text-left">
+<p class="font-label-md text-on-surface">Data Karyawan</p>
+<p class="text-[12px] text-secondary">Manage employee profiles</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-tertiary-fixed transition-colors rounded-xl group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined p-sm bg-white rounded-lg text-tertiary" data-icon="description">description</span>
+<div class="text-left">
+<p class="font-label-md text-on-surface">Laporan Kehadiran</p>
+<p class="text-[12px] text-secondary">Generate monthly reports</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-secondary-container transition-colors rounded-xl group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined p-sm bg-white rounded-lg text-secondary" data-icon="map">map</span>
+<div class="text-left">
+<p class="font-label-md text-on-surface">Geofencing Setup</p>
+<p class="text-[12px] text-secondary">Define work zones</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<div class="mt-auto pt-md">
+<div class="p-md bg-primary/5 rounded-xl border border-primary/10">
+<p class="font-label-sm text-primary mb-xs">System Status</p>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+<p class="text-body-sm text-on-surface-variant">All biometric scanners active</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity Table Section -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+<div class="p-md border-b border-outline-variant flex justify-between items-center">
+<h4 class="font-headline-md text-body-lg font-bold">Recent Attendance</h4>
+<button class="text-primary font-label-md hover:underline">View All</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-md py-sm font-label-md text-secondary">Employee</th>
+<th class="px-md py-sm font-label-md text-secondary">Time In</th>
+<th class="px-md py-sm font-label-md text-secondary">Method</th>
+<th class="px-md py-sm font-label-md text-secondary">Location</th>
+<th class="px-md py-sm font-label-md text-secondary text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+{% for att in recent_attendance %}
+<tr class="hover:bg-surface-container transition-colors cursor-pointer">
+<td class="px-md py-md">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs">{{ att.employee.fullname|make_list|first }}</div>
+<p class="font-body-md text-on-surface">{{ att.employee.fullname }}</p>
+</div>
+</td>
+<td class="px-md py-md font-body-sm">{{ att.timestamp|time:"H:i A" }}</td>
+<td class="px-md py-md">
+<span class="flex items-center gap-xs text-body-sm text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="face">face</span> {{ att.get_type_display }}
+                                    </span>
+</td>
+<td class="px-md py-md text-body-sm">{{ att.latitude }}, {{ att.longitude }}</td>
+<td class="px-md py-md text-right">
+{% if att.status == 'on_time' %}
+<span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-label-sm">{{ att.get_status_display }}</span>
+{% else %}
+<span class="px-3 py-1 rounded-full bg-error-container text-error text-label-sm">{{ att.get_status_display }}</span>
+{% endif %}
+</td>
+</tr>
+{% empty %}
+<tr><td colspan="5" class="text-center py-md text-secondary">No recent attendance.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</main>
+<script>
+        // Chart Implementation
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Attendance Rate',
+                    data: [92, 95, 88, 94, 96, 70, 65],
+                    borderColor: '#003d9b',
+                    backgroundColor: 'rgba(0, 61, 155, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#003d9b',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 50,
+                        max: 100,
+                        grid: { color: '#edeef0' },
+                        ticks: {
+                            callback: function(value) { return value + '%'; },
+                            font: { size: 12 }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 12 } }
+                    }
+                }
+            }
+        });
+
+        // Hover Micro-interactions
+        document.querySelectorAll('.active\\:scale-95').forEach(el => {
+            el.addEventListener('mousedown', () => el.style.transform = 'scale(0.95)');
+            el.addEventListener('mouseup', () => el.style.transform = 'scale(1)');
+            el.addEventListener('mouseleave', () => el.style.transform = 'scale(1)');
+        });
+    </script>
+</body></html>

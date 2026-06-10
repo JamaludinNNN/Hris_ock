@@ -1,0 +1,218 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="{% static 'js/tailwind.js' %}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#006477",
+                        "secondary-fixed": "#d7e3fb",
+                        "tertiary-fixed-dim": "#48d7f9",
+                        "on-background": "#191c1e",
+                        "surface-container-highest": "#e1e2e4",
+                        "secondary-fixed-dim": "#bbc7de",
+                        "on-primary-fixed-variant": "#0040a2",
+                        "on-surface-variant": "#434654",
+                        "tertiary-fixed": "#afecff",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0052cc",
+                        "on-secondary-fixed": "#101c2d",
+                        "on-tertiary-fixed": "#001f27",
+                        "inverse-primary": "#b2c5ff",
+                        "inverse-on-surface": "#f0f1f3",
+                        "outline-variant": "#c3c6d6",
+                        "on-secondary-fixed-variant": "#3b475b",
+                        "surface-tint": "#0c56d0",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "on-primary-fixed": "#001848",
+                        "inverse-surface": "#2e3132",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#76e2ff",
+                        "background": "#f8f9fb",
+                        "surface": "#f8f9fb",
+                        "on-secondary-container": "#576377",
+                        "surface-container-high": "#e7e8ea",
+                        "surface-container": "#edeef0",
+                        "secondary": "#535f73",
+                        "surface-bright": "#f8f9fb",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d9dadc",
+                        "surface-variant": "#e1e2e4",
+                        "surface-container-low": "#f3f4f6",
+                        "primary-fixed": "#dae2ff",
+                        "primary": "#003d9b",
+                        "secondary-container": "#d4e0f8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#737685",
+                        "on-error": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#004b59",
+                        "on-primary-container": "#c4d2ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "lg": "40px",
+                        "container-max": "1440px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-indicator {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar (Shared Component) -->
+{% include "components/sidebar.html" %}
+<!-- TopNavBar (Shared Component) -->
+{% include "components/navbar.html" %}
+<!-- Main Content Canvas -->
+<main class="ml-[260px] pt-24 px-lg pb-xl min-h-screen">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-lg">
+<div>
+<h2 class="text-headline-lg font-headline-lg text-on-surface">Tambah Karyawan Baru</h2>
+<p class="text-body-md text-on-surface-variant mt-1">Masukkan data karyawan baru ke dalam sistem.</p>
+</div>
+
+</div>
+
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-sm border border-outline-variant max-w-2xl">
+    <h3 class="font-headline-md text-headline-md text-on-surface mb-md">Form Tambah Karyawan</h3>
+    <form method="POST" action="{% url 'tambah_karyawan' %}" class="space-y-md">
+        {% csrf_token %}
+        <input type="hidden" name="profile_image_base64" id="profile-image-base64">
+        
+        <!-- Profile Photo Upload -->
+        <div class="flex items-center gap-md mb-md p-md bg-surface-container-low rounded-xl border border-outline-variant/30">
+            <div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold overflow-hidden border-2 border-primary/20 shadow-sm" id="photo-preview">
+                <span class="material-symbols-outlined text-[32px]">photo_camera</span>
+            </div>
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs font-bold">Foto Profil Karyawan</label>
+                <input type="file" id="profile-photo-input" accept="image/*" class="text-body-sm text-secondary outline-none file:mr-sm file:py-xs file:px-sm file:rounded-lg file:border-0 file:text-body-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                <p class="text-[10px] text-secondary mt-1">Pilih berkas foto formal untuk profil.</p>
+            </div>
+        </div>
+
+        <div>
+            <label class="block font-label-md text-on-surface-variant mb-xs">Nama Lengkap</label>
+            <input type="text" name="fullname" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+        </div>
+        <div class="grid grid-cols-2 gap-md">
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Email</label>
+                <input type="email" name="email" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+            </div>
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Password User</label>
+                <input type="password" name="password" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-md">
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">ID Karyawan</label>
+                <input type="text" name="employee_id" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+            </div>
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Role / Hak Akses</label>
+                <select name="role" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                    <option value="karyawan">Karyawan Biasa</option>
+                    <option value="admin">HRD / Admin</option>
+                </select>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-md">
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Departemen</label>
+                <input type="text" name="division" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+            </div>
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Jabatan</label>
+                <input type="text" name="position" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+            </div>
+        </div>
+        <div class="pt-md flex gap-sm justify-end">
+            <a href="{% url 'karyawan' %}" class="px-xl py-sm border border-outline text-secondary rounded-lg font-label-md hover:bg-surface-container transition-all">Batal</a>
+            <button type="submit" class="px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm hover:bg-primary-container transition-all">Simpan Karyawan</button>
+        </div>
+    </form>
+</div>
+
+</main>
+<script>
+        // Handle Profile Image Selection and Conversion to Base64
+        const photoInput = document.getElementById('profile-photo-input');
+        const photoPreview = document.getElementById('photo-preview');
+        const base64Input = document.getElementById('profile-image-base64');
+        
+        if (photoInput) {
+            photoInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const base64String = event.target.result;
+                        base64Input.value = base64String;
+                        photoPreview.innerHTML = `<img src="${base64String}" class="w-full h-full object-cover">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    </script>
+</body></html>

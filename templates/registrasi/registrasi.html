@@ -1,0 +1,596 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Registrasi Biometrik | Attendance Pro</title>
+<script src="{% static 'js/tailwind.js' %}"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#006477",
+                        "secondary-fixed": "#d7e3fb",
+                        "tertiary-fixed-dim": "#48d7f9",
+                        "on-background": "#191c1e",
+                        "surface-container-highest": "#e1e2e4",
+                        "secondary-fixed-dim": "#bbc7de",
+                        "on-primary-fixed-variant": "#0040a2",
+                        "on-surface-variant": "#434654",
+                        "tertiary-fixed": "#afecff",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0052cc",
+                        "on-secondary-fixed": "#101c2d",
+                        "on-tertiary-fixed": "#001f27",
+                        "inverse-primary": "#b2c5ff",
+                        "inverse-on-surface": "#f0f1f3",
+                        "outline-variant": "#c3c6d6",
+                        "on-secondary-fixed-variant": "#3b475b",
+                        "surface-tint": "#0c56d0",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "on-primary-fixed": "#001848",
+                        "inverse-surface": "#2e3132",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#76e2ff",
+                        "background": "#f8f9fb",
+                        "surface": "#f8f9fb",
+                        "on-secondary-container": "#576377",
+                        "surface-container-high": "#e7e8ea",
+                        "surface-container": "#edeef0",
+                        "secondary": "#535f73",
+                        "surface-bright": "#f8f9fb",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d9dadc",
+                        "surface-variant": "#e1e2e4",
+                        "surface-container-low": "#f3f4f6",
+                        "primary-fixed": "#dae2ff",
+                        "primary": "#003d9b",
+                        "secondary-container": "#d4e0f8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#737685",
+                        "on-error": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#004b59",
+                        "on-primary-container": "#c4d2ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "lg": "40px",
+                        "container-max": "1440px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scanning-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #0c56d0;
+            box-shadow: 0 0 15px #0c56d0;
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 15%; }
+            50% { top: 85%; }
+            100% { top: 15%; }
+        }
+        .face-frame-circle {
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 260px;
+            height: 260px;
+        }
+        .scanning-grid {
+            background-image: linear-gradient(rgba(12, 86, 208, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(12, 86, 208, 0.05) 1px, transparent 1px);
+            background-size: 25px 25px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md">
+
+{% include "components/sidebar.html" %}
+
+<!-- Main Content Area -->
+<main class="ml-[260px] pt-16 min-h-screen p-lg">
+    {% include "components/navbar.html" %}
+
+    <div class="max-w-[1200px] mx-auto">
+        <!-- Header Section -->
+        <div class="mb-lg">
+            <h2 class="font-headline-lg text-headline-lg text-on-surface">Registrasi Biometrik Wajah</h2>
+            <p class="text-secondary text-body-md mt-xs">Daftarkan data wajah asli karyawan secara real-time ke dalam database terotentikasi.</p>
+        </div>
+
+        <div class="grid grid-cols-12 gap-md">
+            <!-- Left Column: Instructions & Status -->
+            <div class="col-span-4 space-y-md">
+                <!-- Overall Progress -->
+                <div class="bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+                    <div class="flex justify-between items-center mb-sm">
+                        <span class="font-label-md text-primary uppercase tracking-wider">Status Pemindai</span>
+                        <span class="text-body-sm font-bold text-primary" id="progress-text">Memuat AI...</span>
+                    </div>
+                    <div class="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
+                        <div class="bg-primary h-full w-[10%] transition-all duration-500" id="progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Instructions -->
+                <div class="bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+                    <h3 class="font-label-md text-on-surface mb-md flex items-center">
+                        <span class="material-symbols-outlined mr-sm text-primary">checklist</span>
+                        Langkah Registrasi
+                    </h3>
+                    <div class="space-y-sm">
+                        <div class="flex items-start gap-sm p-sm rounded-lg" id="step-1">
+                            <span class="material-symbols-outlined text-outline" id="icon-1">center_focus_strong</span>
+                            <div>
+                                <p class="text-label-md text-on-surface font-semibold">Inisialisasi Sensor</p>
+                                <p class="text-body-sm text-secondary">Memuat model pencocokan biometrik wajah.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-sm p-sm rounded-lg opacity-50" id="step-2">
+                            <span class="material-symbols-outlined text-outline" id="icon-2">face_6</span>
+                            <div>
+                                <p class="text-label-md text-on-surface">Posisikan Wajah</p>
+                                <p class="text-body-sm text-secondary">Arahkan wajah Anda ke lingkaran kamera.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-sm p-sm rounded-lg opacity-50" id="step-3">
+                            <span class="material-symbols-outlined text-outline" id="icon-3">verified</span>
+                            <div>
+                                <p class="text-label-md text-on-surface">Ambil Biometrik</p>
+                                <p class="text-body-sm text-secondary">Mengekstrak ciri wajah dan meregistrasi data.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gallery of Samples -->
+                <div class="bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+                    <h3 class="font-label-md text-on-surface mb-md">Sampel Wajah Terdaftar</h3>
+                    <div class="aspect-square bg-surface-container rounded-lg border-2 border-dashed border-outline-variant flex items-center justify-center overflow-hidden" id="face-preview-container">
+                        <span class="material-symbols-outlined text-outline text-[48px]">account_box</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Camera Preview -->
+            <div class="col-span-8 flex flex-col gap-md">
+                <div class="bg-black rounded-xl overflow-hidden shadow-2xl relative aspect-[16/9] flex items-center justify-center border border-outline-variant/30 scanning-grid">
+                    <!-- Camera Feed -->
+                    <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
+                    <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] z-10"></canvas>
+
+                    <!-- Scanning UI -->
+                    <div class="absolute inset-0 pointer-events-none" id="scanning-ui">
+                        <div class="scanning-line"></div>
+                        <div class="face-frame-circle"></div>
+                        <!-- Corner Accents -->
+                        <div class="absolute top-6 left-6 w-10 h-10 border-t-4 border-l-4 border-primary rounded-tl-xl"></div>
+                        <div class="absolute top-6 right-6 w-10 h-10 border-t-4 border-r-4 border-primary rounded-tr-xl"></div>
+                        <div class="absolute bottom-6 left-6 w-10 h-10 border-b-4 border-l-4 border-primary rounded-bl-xl"></div>
+                        <div class="absolute bottom-6 right-6 w-10 h-10 border-b-4 border-r-4 border-primary rounded-br-xl"></div>
+                    </div>
+
+                    <!-- Loading / Info Overlay -->
+                    <div id="camera-status-overlay" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-sm transition-all duration-300 z-20">
+                        <span class="material-symbols-outlined animate-spin text-white text-[48px]">sync</span>
+                        <p class="text-white font-label-md tracking-wide" id="camera-status-text">Memuat Model Kecerdasan Buatan (AI)...</p>
+                    </div>
+
+                    <!-- Duplication or Verification Failure Error Overlay -->
+                    <div id="error-overlay" class="absolute inset-0 bg-error/95 backdrop-blur-md flex flex-col items-center justify-center gap-md opacity-0 pointer-events-none transition-all duration-300 z-30">
+                        <div class="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-lg animate-bounce">
+                            <span class="material-symbols-outlined text-error text-[40px]">warning</span>
+                        </div>
+                        <div class="text-center px-lg text-white">
+                            <h4 class="font-headline-md text-body-lg font-bold">Duplikasi Biometrik Terdeteksi</h4>
+                            <p class="text-body-sm opacity-90 mt-xs" id="error-message">Wajah ini terdeteksi mirip dengan data biometrik karyawan lain di sistem!</p>
+                        </div>
+                        <button type="button" onclick="resetScan()" class="px-xl py-sm bg-white text-error rounded-lg font-label-md hover:bg-surface-container transition-all shadow-md active:scale-95">Reset Pemindaian</button>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <form method="POST" action="{% url 'registrasi' %}" class="flex justify-between items-center bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="embedding" id="face-embedding">
+                    <div class="flex items-center gap-md">
+                        <div class="h-12 w-12 rounded-full bg-surface-container-high flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">person_check</span>
+                        </div>
+                        <div>
+                            <p class="font-label-md text-on-surface mb-xs">Pilih Karyawan:</p>
+                            <select name="employee_id" id="employee-selector" required class="bg-surface-container-low border-none text-body-sm rounded-lg focus:ring-primary py-xs px-sm">
+                                <option value="" disabled selected>-- Pilih Karyawan --</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.employee_id }} - {{ emp.fullname }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-sm">
+                        <button type="button" onclick="startBiometricCapture()" class="px-md py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm active:scale-95 transition-all flex items-center gap-xs" id="capture-trigger-btn">
+                            <span class="material-symbols-outlined text-[18px]">camera_alt</span>
+                            Pindai Wajah
+                        </button>
+                        <button type="submit" class="px-xl py-sm bg-outline text-on-surface/50 rounded-lg font-label-md shadow-sm opacity-50 cursor-not-allowed" disabled id="save-data-btn">
+                            Simpan Data Wajah
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Registered Biometric Faces Cache -->
+<script id="registered-faces-data" type="application/json">
+[
+    {% for emp in employees %}
+        {% if emp.face_data %}
+            {
+                "id": "{{ emp.id }}",
+                "name": "{{ emp.fullname }}",
+                "image": "{{ emp.face_data.embedding|safe }}"
+            }
+        {% endif %}
+    {% endfor %}
+]
+</script>
+
+<script>
+    const startBtn = document.getElementById('capture-trigger-btn');
+    const saveBtn = document.getElementById('save-data-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const statusOverlay = document.getElementById('camera-status-overlay');
+    const statusText = document.getElementById('camera-status-text');
+    const previewContainer = document.getElementById('face-preview-container');
+    const errorOverlay = document.getElementById('error-overlay');
+    const errorMsg = document.getElementById('error-message');
+    const employeeSelector = document.getElementById('employee-selector');
+    
+    let isModelsLoaded = false;
+    let videoEl = document.getElementById('camera-stream');
+    let canvasEl = document.getElementById('overlay-canvas');
+    let ctx = canvasEl.getContext('2d');
+    let captureInterval = null;
+    let cachedDescriptors = [];
+
+    // Load Vladmandic Face-API Models
+    async function loadModels() {
+        try {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            
+            isModelsLoaded = true;
+            statusOverlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            progressBar.style.width = '33%';
+            progressText.innerText = 'Tahap 1/3';
+            
+            // Mark step 1 completed
+            markStepActive(1);
+            
+            // Start loading cached biometrics to prevent duplication
+            preloadCachedBiometrics();
+        } catch (err) {
+            console.error("Error loading face-api models:", err);
+            statusText.innerText = "Gagal memuat modul kecerdasan buatan (Coba refresh).";
+        }
+    }
+
+    // Preload registered profiles for strict client-side search (duplication check)
+    async function preloadCachedBiometrics() {
+        const raw = document.getElementById('registered-faces-data').textContent;
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            for (let profile of data) {
+                const descriptorStr = profile.image;
+                if (!descriptorStr) continue;
+                try {
+                    const arr = JSON.parse(descriptorStr);
+                    cachedDescriptors.push({
+                        id: profile.id,
+                        name: profile.name,
+                        descriptor: new Float32Array(arr)
+                    });
+                } catch(e) {
+                    console.error("Old face data or parsing error for profile:", profile.name);
+                }
+            }
+        } catch (err) {
+            console.error("Error parsing preloaded faces:", err);
+        }
+    }
+
+    // Camera initializer
+    async function startCamera() {
+        try {
+            const constraints = {
+                video: {
+                    facingMode: "user"
+                }
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoEl.srcObject = stream;
+            
+            videoEl.addEventListener('play', () => {
+                // Periodically resize canvas overlay to match video stream dimensions
+                canvasEl.width = videoEl.videoWidth;
+                canvasEl.height = videoEl.videoHeight;
+                runLiveFaceDetection();
+            });
+        } catch (err) {
+            console.error("Camera access denied:", err);
+            alert("Harap berikan izin akses webcam agar sensor biometrik dapat mendeteksi kontur wajah.");
+        }
+    }
+
+    // Dynamic Biometric landmarks Mesh rendering
+    function runLiveFaceDetection() {
+        setInterval(async () => {
+            if (!isModelsLoaded) return;
+            const detections = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            
+            if (detections) {
+                const resized = faceapi.resizeResults(detections, { width: canvasEl.width, height: canvasEl.height });
+                // Draw dynamic facial mesh dots
+                faceapi.draw.drawFaceLandmarks(canvasEl, resized);
+                
+                // If on Step 1, auto progress to Step 2 since face is in frame
+                if (progressBar.style.width === '33%') {
+                    progressBar.style.width = '66%';
+                    progressText.innerText = 'Tahap 2/3';
+                    markStepCompleted(1);
+                    markStepActive(2);
+                }
+            } else {
+                // Regression to Step 1 if face moves out of frame
+                if (progressBar.style.width === '66%') {
+                    progressBar.style.width = '33%';
+                    progressText.innerText = 'Tahap 1/3';
+                    markStepActive(1);
+                    markStepInactive(2);
+                }
+            }
+        }, 100);
+    }
+
+    function markStepActive(step) {
+        const el = document.getElementById(`step-${step}`);
+        el.classList.remove('opacity-50');
+        el.classList.add('bg-primary-container/10', 'border', 'border-primary/20');
+        el.querySelector('span').className = 'material-symbols-outlined text-primary';
+        el.querySelector('p').classList.add('font-bold');
+    }
+
+    function markStepCompleted(step) {
+        const el = document.getElementById(`step-${step}`);
+        el.classList.remove('bg-primary-container/10', 'border-primary/20');
+        el.classList.add('bg-tertiary-container/10', 'border', 'border-tertiary/20');
+        const span = el.querySelector('span');
+        span.className = 'material-symbols-outlined text-tertiary';
+        span.innerText = 'check_circle';
+    }
+
+    function markStepInactive(step) {
+        const el = document.getElementById(`step-${step}`);
+        el.className = 'flex items-start gap-sm p-sm rounded-lg opacity-50 border border-transparent';
+        const span = el.querySelector('span');
+        span.className = 'material-symbols-outlined text-outline';
+        span.innerText = step === 2 ? 'face_6' : 'verified';
+        el.querySelector('p').classList.remove('font-bold');
+    }
+
+    // Real Face Capture & Strict Search Biometrics Check (High-Accuracy SsdMobilenetv1)
+    async function startBiometricCapture() {
+        if (!employeeSelector.value) {
+            alert("Pilih profil karyawan terlebih dahulu sebelum memulai pemindaian biometrik.");
+            return;
+        }
+
+        startBtn.disabled = true;
+        
+        let framesCaptured = 0;
+        const totalFramesNeeded = 3;
+        const descriptorsList = [];
+        
+        // Disable selector during scanning to prevent mismatches
+        employeeSelector.disabled = true;
+
+        async function captureNextFrame() {
+            if (framesCaptured >= totalFramesNeeded) {
+                // Done capturing all frames! Average them!
+                averageAndFinalize(descriptorsList);
+                return;
+            }
+
+            startBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Frame ${framesCaptured + 1}/${totalFramesNeeded}...`;
+            
+            const detections = await faceapi.detectSingleFace(videoEl).withFaceLandmarks().withFaceDescriptor();
+            
+            if (!detections) {
+                // If no face, try again in 500ms
+                startBtn.innerHTML = `<span class="material-symbols-outlined text-error animate-pulse text-[16px]">warning</span> Wajah Hilang...`;
+                setTimeout(captureNextFrame, 500);
+                return;
+            }
+
+            const score = detections.detection.score;
+            if (score < 0.90) {
+                // If confidence is too low, try again in 500ms
+                startBtn.innerHTML = `<span class="material-symbols-outlined text-warning animate-pulse text-[16px]">lightbulb</span> Kurang Cahaya...`;
+                setTimeout(captureNextFrame, 500);
+                return;
+            }
+
+            // High confidence face detected! Save descriptor!
+            descriptorsList.push(detections.descriptor);
+            framesCaptured++;
+            
+            // Draw a temporary green overlay flash effect on canvasEl to indicate frame capture success
+            ctx.fillStyle = "rgba(72, 215, 249, 0.25)";
+            ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+            setTimeout(() => {
+                ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            }, 150);
+
+            // Trigger next frame in 400ms
+            setTimeout(captureNextFrame, 400);
+        }
+
+        async function averageAndFinalize(descriptors) {
+            startBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Menyusun...`;
+            
+            // Mathematically average the 3 Float32Array descriptors
+            const averagedDescriptor = new Float32Array(128);
+            for (let i = 0; i < 128; i++) {
+                let sum = 0;
+                for (let j = 0; j < descriptors.length; j++) {
+                    sum += descriptors[j][i];
+                }
+                averagedDescriptor[i] = sum / descriptors.length;
+            }
+
+            // Perform strict duplication check with other employee profiles using averaged descriptor
+            let matchedProfile = null;
+            for (let cached of cachedDescriptors) {
+                if (cached.id === employeeSelector.value) continue;
+                
+                const distance = faceapi.euclideanDistance(averagedDescriptor, cached.descriptor);
+                if (distance < 0.45) { // Strict anti-duplication threshold (high accuracy)
+                    matchedProfile = cached;
+                    break;
+                }
+            }
+
+            if (matchedProfile) {
+                errorMsg.innerText = `Pendaftaran ditolak! Wajah ini terdeteksi sangat mirip (duplikat) dengan Karyawan: ${matchedProfile.name}.`;
+                errorOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                employeeSelector.disabled = false;
+                return;
+            }
+
+            // Capture face snapshot Base64 for preview
+            const captureCanvas = document.createElement('canvas');
+            captureCanvas.width = videoEl.videoWidth;
+            captureCanvas.height = videoEl.videoHeight;
+            const capCtx = captureCanvas.getContext('2d');
+            
+            capCtx.translate(captureCanvas.width, 0);
+            capCtx.scale(-1, 1);
+            capCtx.drawImage(videoEl, 0, 0, captureCanvas.width, captureCanvas.height);
+            
+            const base64Image = captureCanvas.toDataURL('image/jpeg', 0.85);
+            
+            // Save the averaged biometric embedding
+            const descriptorJSON = JSON.stringify(Array.from(averagedDescriptor));
+            document.getElementById('face-embedding').value = descriptorJSON;
+            previewContainer.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover">`;
+            
+            // Mark step 3 finished
+            progressBar.style.width = '100%';
+            progressText.innerText = 'Selesai';
+            markStepCompleted(2);
+            markStepCompleted(3);
+            
+            startBtn.style.display = 'none';
+            saveBtn.disabled = false;
+            saveBtn.className = "px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm active:scale-95 hover:bg-primary-container transition-all cursor-pointer";
+        }
+
+        // Start capturing frames
+        captureNextFrame();
+    }
+
+    function resetScan() {
+        errorOverlay.classList.add('opacity-0', 'pointer-events-none');
+        document.getElementById('face-embedding').value = '';
+        previewContainer.innerHTML = `<span class="material-symbols-outlined text-outline text-[48px]">account_box</span>`;
+        
+        progressBar.style.width = '66%';
+        progressText.innerText = 'Tahap 2/3';
+        
+        markStepInactive(3);
+        markStepActive(2);
+        
+        startBtn.style.display = 'flex';
+        startBtn.disabled = false;
+        startBtn.innerHTML = `<span class="material-symbols-outlined text-[18px]">camera_alt</span> Pindai Wajah`;
+        
+        saveBtn.disabled = true;
+        saveBtn.className = "px-xl py-sm bg-outline text-on-surface/50 rounded-lg font-label-md shadow-sm opacity-50 cursor-not-allowed";
+        
+        employeeSelector.disabled = false;
+    }
+
+    // Bootstrapping
+    document.addEventListener('DOMContentLoaded', () => {
+        loadModels();
+        startCamera();
+    });
+</script>
+</body>
+</html>

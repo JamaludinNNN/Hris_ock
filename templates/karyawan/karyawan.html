@@ -1,0 +1,397 @@
+{% load static %}
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="{% static 'js/tailwind.js' %}"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#006477",
+                        "secondary-fixed": "#d7e3fb",
+                        "tertiary-fixed-dim": "#48d7f9",
+                        "on-background": "#191c1e",
+                        "surface-container-highest": "#e1e2e4",
+                        "secondary-fixed-dim": "#bbc7de",
+                        "on-primary-fixed-variant": "#0040a2",
+                        "on-surface-variant": "#434654",
+                        "tertiary-fixed": "#afecff",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0052cc",
+                        "on-secondary-fixed": "#101c2d",
+                        "on-tertiary-fixed": "#001f27",
+                        "inverse-primary": "#b2c5ff",
+                        "inverse-on-surface": "#f0f1f3",
+                        "outline-variant": "#c3c6d6",
+                        "on-secondary-fixed-variant": "#3b475b",
+                        "surface-tint": "#0c56d0",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "on-primary-fixed": "#001848",
+                        "inverse-surface": "#2e3132",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#76e2ff",
+                        "background": "#f8f9fb",
+                        "surface": "#f8f9fb",
+                        "on-secondary-container": "#576377",
+                        "surface-container-high": "#e7e8ea",
+                        "surface-container": "#edeef0",
+                        "secondary": "#535f73",
+                        "surface-bright": "#f8f9fb",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d9dadc",
+                        "surface-variant": "#e1e2e4",
+                        "surface-container-low": "#f3f4f6",
+                        "primary-fixed": "#dae2ff",
+                        "primary": "#003d9b",
+                        "secondary-container": "#d4e0f8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#737685",
+                        "on-error": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#004b59",
+                        "on-primary-container": "#c4d2ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "lg": "40px",
+                        "container-max": "1440px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-indicator {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar (Shared Component) -->
+{% include "components/sidebar.html" %}
+<!-- TopNavBar (Shared Component) -->
+{% include "components/navbar.html" %}
+<!-- Main Content Canvas -->
+<main class="ml-[260px] pt-24 px-lg pb-xl min-h-screen">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-lg">
+<div>
+<h2 class="text-headline-lg font-headline-lg text-on-surface">Manajemen Data Karyawan</h2>
+<p class="text-body-md text-on-surface-variant mt-1">Kelola informasi profil, departemen, dan status aktif karyawan.</p>
+</div>
+<a href="{% url 'tambah_karyawan' %}" class="bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md flex items-center gap-2 shadow-lg hover:bg-primary-container transition-all active:scale-95"><span class="material-symbols-outlined">person_add</span> Tambah Karyawan Baru</a>
+</div>
+<!-- Filters and Stats Bento Grid -->
+<div class="grid grid-cols-12 gap-gutter mb-lg">
+<!-- Stats Card 1 -->
+<div class="col-span-3 bg-surface-container-lowest p-md rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant/30">
+<div class="flex items-center justify-between mb-4">
+<span class="p-2 bg-primary/10 text-primary rounded-lg">
+<span class="material-symbols-outlined">groups</span>
+</span>
+<span class="text-label-sm text-on-surface-variant font-medium">+12% this month</span>
+</div>
+<h4 class="text-body-sm text-on-surface-variant">Total Karyawan</h4>
+<p class="text-headline-md text-on-surface mt-1">{{ total_karyawan }}</p>
+</div>
+<!-- Stats Card 2 -->
+<div class="col-span-3 bg-surface-container-lowest p-md rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant/30">
+<div class="flex items-center justify-between mb-4">
+<span class="p-2 bg-tertiary-container/10 text-tertiary-container rounded-lg">
+<span class="material-symbols-outlined">domain</span>
+</span>
+</div>
+<h4 class="text-body-sm text-on-surface-variant">Departemen Aktif</h4>
+<p class="text-headline-md text-on-surface mt-1">{{ total_departemen }}</p>
+</div>
+<!-- Filter Bar -->
+<div class="col-span-6 bg-surface-container-lowest p-md rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant/30 flex items-center gap-4">
+<div class="flex-1 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">filter_list</span>
+<select class="w-full pl-10 pr-4 py-2 rounded-lg border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-body-sm appearance-none bg-white">
+<option>Semua Departemen</option>
+<option>IT Development</option>
+<option>Human Resources</option>
+<option>Marketing</option>
+<option>Finance</option>
+</select>
+</div>
+<div class="flex-1 relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">verified_user</span>
+<select class="w-full pl-10 pr-4 py-2 rounded-lg border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-body-sm appearance-none bg-white">
+<option>Semua Status</option>
+<option>Aktif</option>
+<option>Non-Aktif</option>
+</select>
+</div>
+<button class="p-2 bg-surface-container-high rounded-lg text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+</div>
+<!-- Employee Table Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-outline-variant/30 overflow-hidden">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant/50">
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant text-center w-12">NO.</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">KARYAWAN</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">ID KARYAWAN</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">DEPARTEMEN</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">JABATAN</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">ROLE</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">STATUS</th>
+<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant text-right pr-6">AKSI</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+{% for emp in employees %}
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-md py-4 text-center font-label-md text-outline">{{ forloop.counter }}</td>
+<td class="px-md py-4">
+<div class="flex items-center gap-3">
+{% if emp.profile_image %}
+<img src="{{ emp.profile_image }}" class="w-10 h-10 rounded-full object-cover border-2 border-primary/20 shadow-sm">
+{% else %}
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold shadow-sm border border-primary/10">{{ emp.fullname|make_list|first }}</div>
+{% endif %}
+<div>
+<p class="text-body-sm font-semibold text-on-surface">{{ emp.fullname }}</p>
+<p class="text-[12px] text-on-surface-variant">{{ emp.user.email }}</p>
+</div>
+</div>
+</td>
+<td class="px-md py-4 text-body-sm text-on-surface-variant">{{ emp.employee_id }}</td>
+<td class="px-md py-4 text-body-sm text-on-surface">{{ emp.division }}</td>
+<td class="px-md py-4 text-body-sm text-on-surface-variant">{{ emp.position }}</td>
+<td class="px-md py-4 text-body-sm text-on-surface font-semibold">
+    {% if emp.user.role == 'admin' %}
+        <span class="text-tertiary-container">HRD / Admin</span>
+    {% else %}
+        <span class="text-secondary">Karyawan</span>
+    {% endif %}
+</td>
+<td class="px-md py-4">
+{% if emp.user.is_active %}
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-primary mr-1.5"></span>
+                                Aktif
+                            </span>
+{% else %}
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-outline-variant/30 text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline mr-1.5"></span>
+                                Non-Aktif
+                            </span>
+{% endif %}
+</td>
+<td class="px-md py-4 text-right pr-6">
+<div class="flex items-center justify-end gap-2">
+<button onclick="openEditModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email }}', '{{ emp.division }}', '{{ emp.position }}', '{{ emp.profile_image|default:'' }}')" class="p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr><td colspan="8" class="text-center py-md text-secondary">Tidak ada data karyawan.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="px-md py-4 border-t border-outline-variant/30 flex items-center justify-between">
+<p class="text-label-sm text-on-surface-variant">Menampilkan 1 - 3 dari 1,284 karyawan</p>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container-high transition-colors text-outline">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary text-on-primary text-label-sm flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant text-label-sm flex items-center justify-center">2</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant text-label-sm flex items-center justify-center">3</button>
+<span class="mx-1 text-outline">...</span>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant text-label-sm flex items-center justify-center">42</button>
+<button class="p-1 rounded hover:bg-surface-container-high transition-colors text-outline">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Edit Employee Modal (Quick Action Overlay) -->
+<div id="edit-employee-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-lg w-full max-w-lg shadow-2xl transform scale-95 transition-all duration-300" id="edit-modal-content">
+        <div class="flex justify-between items-center mb-md border-b border-outline-variant pb-sm">
+            <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm font-bold">
+                <span class="material-symbols-outlined text-primary text-[28px]">edit_note</span>
+                Edit Data Karyawan
+            </h3>
+            <button onclick="closeEditModal()" class="material-symbols-outlined text-secondary hover:text-primary transition-colors">close</button>
+        </div>
+        
+        <form method="POST" action="{% url 'karyawan' %}" class="space-y-md">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="id" id="edit-emp-id">
+            <input type="hidden" name="profile_image_base64" id="edit-profile-image-base64">
+
+            <!-- Profile Photo Upload -->
+            <div class="flex items-center gap-md p-sm bg-surface-container-low rounded-xl border border-outline-variant/30">
+                <div class="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold overflow-hidden border border-primary/10 shadow-sm" id="edit-photo-preview">
+                    <span class="material-symbols-outlined text-[28px]">photo_camera</span>
+                </div>
+                <div>
+                    <label class="block font-label-sm text-on-surface-variant font-bold">Ubah Foto Profil</label>
+                    <input type="file" id="edit-profile-photo-input" accept="image/*" class="text-[11px] text-secondary file:mr-sm file:py-1 file:px-2 file:rounded-lg file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Nama Lengkap</label>
+                <input type="text" name="fullname" id="edit-fullname" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+            </div>
+
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Email</label>
+                <input type="email" name="email" id="edit-email" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-md">
+                <div>
+                    <label class="block font-label-md text-on-surface-variant mb-xs">Departemen</label>
+                    <input type="text" name="division" id="edit-division" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                </div>
+                <div>
+                    <label class="block font-label-md text-on-surface-variant mb-xs">Jabatan</label>
+                    <input type="text" name="position" id="edit-position" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                </div>
+            </div>
+
+            <div class="pt-md border-t border-outline-variant/30 flex gap-sm justify-between items-center">
+                <!-- Delete Button -->
+                <button type="button" onclick="triggerDeleteEmployee()" class="px-md py-sm bg-error/10 hover:bg-error-container text-error rounded-lg font-label-md flex items-center gap-1 transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-[18px]">delete</span> Hapus
+                </button>
+
+                <div class="flex gap-sm">
+                    <button type="button" onclick="closeEditModal()" class="px-md py-sm border border-outline text-secondary rounded-lg font-label-md hover:bg-surface-container transition-all">Batal</button>
+                    <button type="submit" class="px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm hover:bg-primary-container transition-all font-bold">Simpan Perubahan</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Hidden Delete Form for Quick Actions -->
+<form id="delete-employee-form" method="POST" action="{% url 'karyawan' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="id" id="delete-emp-id">
+</form>
+
+<script>
+    const editModal = document.getElementById('edit-employee-modal');
+    const modalContent = document.getElementById('edit-modal-content');
+    
+    function openEditModal(id, fullname, email, division, position, photoBase64) {
+        document.getElementById('edit-emp-id').value = id;
+        document.getElementById('edit-fullname').value = fullname;
+        document.getElementById('edit-email').value = email;
+        document.getElementById('edit-division').value = division;
+        document.getElementById('edit-position').value = position;
+        
+        const photoPreview = document.getElementById('edit-photo-preview');
+        const base64Input = document.getElementById('edit-profile-image-base64');
+        base64Input.value = ''; // clear initially
+        
+        if (photoBase64 && photoBase64 !== 'None' && photoBase64 !== '') {
+            photoPreview.innerHTML = `<img src="${photoBase64}" class="w-full h-full object-cover">`;
+        } else {
+            photoPreview.innerHTML = `<div class="w-full h-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-headline-md">${fullname.charAt(0)}</div>`;
+        }
+        
+        editModal.classList.remove('opacity-0', 'pointer-events-none');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }
+    
+    function closeEditModal() {
+        editModal.classList.add('opacity-0', 'pointer-events-none');
+        modalContent.classList.remove('scale-100');
+        modalContent.classList.add('scale-95');
+    }
+    
+    function triggerDeleteEmployee() {
+        const id = document.getElementById('edit-emp-id').value;
+        const name = document.getElementById('edit-fullname').value;
+        if (confirm(`Apakah Anda yakin ingin menghapus data karyawan ${name}?`)) {
+            document.getElementById('delete-emp-id').value = id;
+            document.getElementById('delete-employee-form').submit();
+        }
+    }
+    
+    // File input Base64 reader for edit profile photo
+    const editPhotoInput = document.getElementById('edit-profile-photo-input');
+    if (editPhotoInput) {
+        editPhotoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64String = event.target.result;
+                    document.getElementById('edit-profile-image-base64').value = base64String;
+                    document.getElementById('edit-photo-preview').innerHTML = `<img src="${base64String}" class="w-full h-full object-cover">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+</script>
+</body></html>

@@ -1,0 +1,89 @@
+<style>
+    @media (max-width: 767.98px) {
+        main {
+            margin-left: 0 !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+        }
+        header {
+            left: 0 !important;
+        }
+    }
+</style>
+
+<aside class="w-[260px] h-screen fixed left-0 top-0 bg-surface-container-lowest dark:bg-surface-dim border-r border-outline-variant dark:border-outline shadow-sm flex flex-col py-md z-50 transition-transform duration-300 -translate-x-full md:translate-x-0" id="sidebar">
+    <div class="px-md mb-lg flex justify-between items-center">
+        <div>
+            <h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">Attendance Pro</h1>
+            <p class="font-body-sm text-secondary">
+                {% if request.user.role == 'admin' or request.user.is_superuser %}
+                    Enterprise HR
+                {% else %}
+                    Employee Portal
+                {% endif %}
+            </p>
+        </div>
+        <button class="md:hidden material-symbols-outlined text-secondary hover:text-primary transition-all duration-200 active:scale-90" onclick="toggleSidebar(false)">close</button>
+    </div>
+    <nav class="flex-1 px-sm space-y-xs">
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'dashboard' %}">
+            <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+            <span class="font-body-md text-body-md">Dashboard</span>
+        </a>
+        {% if request.user.role == 'admin' or request.user.is_superuser %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'karyawan' or request.resolver_match.url_name == 'tambah_karyawan' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'karyawan' %}">
+            <span class="material-symbols-outlined" data-icon="groups">groups</span>
+            <span class="font-body-md text-body-md">Karyawan</span>
+        </a>
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'registrasi' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'registrasi' %}">
+            <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
+            <span class="font-body-md text-body-md">Registrasi Wajah</span>
+        </a>
+        {% endif %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'presensi' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'presensi' %}">
+            <span class="material-symbols-outlined" data-icon="timer">timer</span>
+            <span class="font-body-md text-body-md">Presensi</span>
+        </a>
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'laporan' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'laporan' %}">
+            <span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+            <span class="font-body-md text-body-md">Laporan</span>
+        </a>
+    </nav>
+    <div class="mt-auto px-md space-y-sm">
+        <a class="w-full bg-primary-container text-white font-bold py-sm rounded-xl shadow-md hover:opacity-90 transition-opacity active:scale-95 flex items-center justify-center gap-2" href="{% url 'presensi' %}">
+            <span class="material-symbols-outlined text-[20px]">alarm_on</span>
+            <span>Presensi Portal</span>
+        </a>
+        <div class="pt-md border-t border-outline-variant space-y-xs">
+            {% if request.user.role == 'admin' or request.user.is_superuser %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'settings' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors active:scale-95{% endif %}" href="{% url 'settings' %}">
+                <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                <span class="font-body-md text-body-md">Settings</span>
+            </a>
+            {% endif %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-error hover:bg-error-container transition-colors active:scale-95" href="{% url 'logout' %}">
+                <span class="material-symbols-outlined" data-icon="logout">logout</span>
+                <span class="font-body-md text-body-md">Logout</span>
+            </a>
+        </div>
+    </div>
+</aside>
+
+<!-- Semi-transparent mobile backdrop overlay -->
+<div class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 md:hidden" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
+<script>
+    function toggleSidebar(open) {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar && backdrop) {
+            if (open) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+    }
+</script>

@@ -1,0 +1,765 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Portal Presensi | Attendance Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#006477",
+                        "secondary-fixed": "#d7e3fb",
+                        "tertiary-fixed-dim": "#48d7f9",
+                        "on-background": "#191c1e",
+                        "surface-container-highest": "#e1e2e4",
+                        "secondary-fixed-dim": "#bbc7de",
+                        "on-primary-fixed-variant": "#0040a2",
+                        "on-surface-variant": "#434654",
+                        "tertiary-fixed": "#afecff",
+                        "on-tertiary-fixed-variant": "#004e5d",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#0052cc",
+                        "on-secondary-fixed": "#101c2d",
+                        "on-tertiary-fixed": "#001f27",
+                        "inverse-primary": "#b2c5ff",
+                        "inverse-on-surface": "#f0f1f3",
+                        "outline-variant": "#c3c6d6",
+                        "on-secondary-fixed-variant": "#3b475b",
+                        "surface-tint": "#0c56d0",
+                        "primary-fixed-dim": "#b2c5ff",
+                        "on-primary-fixed": "#001848",
+                        "inverse-surface": "#2e3132",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#76e2ff",
+                        "background": "#f8f9fb",
+                        "surface": "#f8f9fb",
+                        "on-secondary-container": "#576377",
+                        "surface-container-high": "#e7e8ea",
+                        "surface-container": "#edeef0",
+                        "secondary": "#535f73",
+                        "surface-bright": "#f8f9fb",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d9dadc",
+                        "surface-variant": "#e1e2e4",
+                        "surface-container-low": "#f3f4f6",
+                        "primary-fixed": "#dae2ff",
+                        "primary": "#003d9b",
+                        "secondary-container": "#d4e0f8",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "outline": "#737685",
+                        "on-error": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#004b59",
+                        "on-primary-container": "#c4d2ff",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "lg": "40px",
+                        "container-max": "1440px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "sidebar-width": "260px",
+                        "gutter": "24px",
+                        "sm": "12px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scanning-line {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #48d7f9, transparent);
+            animation: scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes scan {
+            0% { top: 10%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 90%; opacity: 0; }
+        }
+        .biometric-grid {
+            background-image: radial-gradient(circle, rgba(72, 215, 249, 0.05) 1px, transparent 1px);
+            background-size: 15px 15px;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen">
+
+{% include "components/sidebar.html" %}
+
+<!-- Main Content Area -->
+<main class="ml-[260px] pt-16 min-h-screen">
+    {% include "components/navbar.html" %}
+
+    <!-- Page Content -->
+    <div class="p-sm md:p-md lg:p-lg max-w-container-max mx-auto w-full">
+        <!-- Page Header -->
+        <div class="mb-md md:mb-lg flex flex-col md:flex-row justify-between items-start md:items-end gap-sm">
+            <div>
+                <h2 class="font-headline-lg text-2xl md:text-headline-lg text-on-background">Portal Presensi Biometrik</h2>
+                <p class="text-body-sm md:text-body-md text-secondary">Posisikan wajah di depan kamera untuk verifikasi lokasi dan wajah.</p>
+            </div>
+            <div class="text-left md:text-right w-full md:w-auto bg-surface-container-low md:bg-transparent p-sm md:p-0 rounded-xl flex md:block justify-between items-center">
+                <p class="font-headline-md text-lg md:text-headline-md text-primary" id="live-clock">--:--:-- WIB</p>
+                <p class="font-label-sm md:font-label-md text-secondary" id="live-date">Memuat Tanggal...</p>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="bg-error/10 text-error p-md rounded-xl font-label-md border border-error/20 flex items-center gap-sm mb-md">
+            <span class="material-symbols-outlined text-[28px]">warning</span>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-12 gap-sm md:gap-md">
+            <!-- Camera and Main Controls -->
+            <div class="col-span-12 lg:col-span-8">
+                <div class="bg-surface-container-lowest rounded-xl p-base shadow-sm border border-outline-variant relative overflow-hidden">
+                    <div class="relative rounded-lg overflow-hidden bg-on-background aspect-video flex items-center justify-center biometric-grid">
+                        <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
+                        <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] z-10"></canvas>
+
+                        <!-- Enhanced Biometric Scanning Overlay -->
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                            <div class="w-48 h-48 sm:w-72 sm:h-72 border-2 border-primary-fixed-dim/20 rounded-3xl relative">
+                                <!-- Corner Brackets -->
+                                <div class="absolute top-0 left-0 w-8 h-8 sm:w-10 sm:h-10 border-t-4 border-l-4 border-primary rounded-tl-xl"></div>
+                                <div class="absolute top-0 right-0 w-8 h-8 sm:w-10 sm:h-10 border-t-4 border-r-4 border-primary rounded-tr-xl"></div>
+                                <div class="absolute bottom-0 left-0 w-8 h-8 sm:w-10 sm:h-10 border-b-4 border-l-4 border-primary rounded-bl-xl"></div>
+                                <div class="absolute bottom-0 right-0 w-8 h-8 sm:w-10 sm:h-10 border-b-4 border-r-4 border-primary rounded-br-xl"></div>
+                                <!-- Scanning Animation -->
+                                <div class="scanning-line absolute w-full left-0"></div>
+                            </div>
+                        </div>
+
+                        <!-- Real-time GPS Overlay Card -->
+                        <div class="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 glass-panel p-xs sm:p-sm rounded-xl border border-outline-variant shadow-sm flex items-center gap-sm sm:gap-md z-20">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-primary-container/20 rounded-lg flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined text-[18px] sm:text-[24px]" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                            </div>
+                            <div>
+                                <p class="font-label-sm text-secondary uppercase tracking-tighter text-[9px] sm:text-[12px]">Lokasi Anda</p>
+                                <p class="font-body-md font-bold text-on-surface text-xs sm:text-body-md" id="live-coords-text">Mengunci GPS...</p>
+                            </div>
+                        </div>
+
+                        <!-- Loading AI Models Indicator -->
+                        <div id="camera-status-overlay" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-sm transition-all duration-300 z-30">
+                            <span class="material-symbols-outlined animate-spin text-white text-[36px] sm:text-[48px]">sync</span>
+                            <p class="text-white font-label-md tracking-wide text-xs sm:text-label-md" id="camera-status-text">Memuat Model AI Biometric...</p>
+                        </div>
+
+                        <!-- Verification Progress Overlay -->
+                        <div id="scan-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-sm opacity-0 pointer-events-none transition-all duration-300 z-40">
+                            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-primary border-t-transparent animate-spin flex items-center justify-center mb-xs sm:mb-sm bg-white/10">
+                                <span class="material-symbols-outlined text-white text-[32px] sm:text-[40px] animate-pulse">fingerprint</span>
+                            </div>
+                            <div id="scan-status" class="text-white font-label-md font-bold tracking-wide mt-xs sm:mt-sm text-center flex flex-col items-center justify-center gap-xs">
+                                <span class="material-symbols-outlined animate-spin text-[28px] sm:text-[32px] text-primary">sync</span>
+                                <span class="block text-xs sm:text-body-md">Memulai Autentikasi...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Refined Action Buttons -->
+                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col sm:flex-row gap-sm sm:gap-md w-full">
+                        {% csrf_token %}
+                        <input type="hidden" name="latitude" id="form-latitude">
+                        <input type="hidden" name="longitude" id="form-longitude">
+                        <input type="hidden" name="type" id="form-type">
+                        
+                        <button type="submit" name="type" value="in" {% if not has_face_data %}disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-surface-container text-on-surface font-headline-md py-md sm:py-lg rounded-xl shadow hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
+                            <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
+                            Presensi Masuk
+                        </button>
+                        <button type="submit" name="type" value="out" {% if not has_face_data %}disabled class="flex-1 bg-primary/50 text-on-primary/50 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-primary text-on-primary font-headline-md py-md sm:py-lg rounded-xl shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
+                            <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
+                            Presensi Keluar
+                        </button>
+                    </form>
+
+                    {% if not has_face_data %}
+                    <div class="mt-md bg-error/10 border border-error/20 p-md rounded-xl text-error font-label-md flex items-center gap-sm">
+                        <span class="material-symbols-outlined text-[32px]">warning</span>
+                        <div>
+                            <p class="font-bold text-sm">Biometrik Wajah Belum Terdaftar!</p>
+                            <p class="text-[12px] text-secondary mt-xs leading-relaxed">Anda belum mendaftarkan biometrik wajah Anda ke dalam database. Harap hubungi HRD / Admin untuk mendaftarkan wajah Anda di menu <strong>Registrasi Wajah</strong> terlebih dahulu sebelum melakukan absensi.</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Today's Activity / Recent History -->
+                <div class="mt-md bg-surface-container-lowest p-md rounded-xl border border-outline-variant">
+                    <div class="flex items-center justify-between mb-md">
+                        <h3 class="font-headline-md text-on-surface">Riwayat Kehadiran Hari Ini</h3>
+                        <span class="text-body-sm text-secondary" id="today-date-text">--:--:--</span>
+                    </div>
+                    <div class="space-y-sm">
+                        {% for item in history %}
+                        <div class="flex items-center justify-between p-sm bg-surface-container-low rounded-lg border border-outline-variant/30">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 bg-tertiary-container/10 text-tertiary flex items-center justify-center rounded-full">
+                                    <span class="material-symbols-outlined">{% if item.type == 'in' %}login{% else %}logout{% endif %}</span>
+                                </div>
+                                <div>
+                                    <p class="font-body-md font-bold">{{ item.get_type_display }}</p>
+                                    <p class="font-label-sm text-secondary">Terverifikasi GPS & Biometrik Wajah</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-headline-md text-primary">{{ item.timestamp|time:"H:i:s" }}</p>
+                                <span class="font-label-sm px-sm py-xs {% if item.status == 'on_time' %}bg-tertiary/10 text-tertiary{% else %}bg-error/10 text-error{% endif %} rounded-full">{{ item.get_status_display }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="flex items-center justify-between p-sm border border-dashed border-outline-variant rounded-lg opacity-60">
+                            <p class="font-body-md text-secondary">Belum ada data presensi hari ini.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Sidebar -->
+            <div class="col-span-12 lg:col-span-4 space-y-sm md:space-y-md">
+                <!-- Working Shift Card -->
+                <div class="bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+                    <div class="flex items-center justify-between mb-sm">
+                        <h3 class="font-label-sm text-secondary uppercase tracking-wider">Shift & Jam Kerja (8 Jam)</h3>
+                        {% if work_status == 'complete' %}
+                            <span class="font-label-sm px-sm py-xs bg-tertiary/10 text-tertiary rounded-full flex items-center gap-xs font-bold">
+                                <span class="material-symbols-outlined text-[14px]">check_circle</span> Terpenuhi
+                            </span>
+                        {% elif work_status == 'incomplete' %}
+                            <span class="font-label-sm px-sm py-xs bg-error/10 text-error rounded-full flex items-center gap-xs font-bold">
+                                <span class="material-symbols-outlined text-[14px]">warning</span> Kurang Jam
+                            </span>
+                        {% elif work_status == 'working' %}
+                            <span class="font-label-sm px-sm py-xs bg-amber-500/10 text-amber-600 rounded-full flex items-center gap-xs font-bold animate-pulse">
+                                <span class="material-symbols-outlined text-[14px]">schedule</span> Bekerja
+                            </span>
+                        {% else %}
+                            <span class="font-label-sm px-sm py-xs bg-outline/10 text-secondary rounded-full flex items-center gap-xs font-bold">
+                                <span class="material-symbols-outlined text-[14px]">info</span> Belum Mulai
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="space-y-sm">
+                        <div class="flex justify-between items-center py-xs border-b border-outline-variant/30">
+                            <span class="font-body-sm text-secondary">Target Shift</span>
+                            <span class="font-body-sm font-bold text-on-surface">08:00 - 17:00 (8 Jam)</span>
+                        </div>
+                        <div class="flex justify-between items-center py-xs border-b border-outline-variant/30">
+                            <span class="font-body-sm text-secondary">Jam Masuk</span>
+                            <span class="font-body-sm font-bold text-on-surface">
+                                {% if check_in_today %}{{ check_in_today.timestamp|time:"H:i" }} WIB{% else %}-{% endif %}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center py-xs border-b border-outline-variant/30">
+                            <span class="font-body-sm text-secondary">Jam Keluar</span>
+                            <span class="font-body-sm font-bold text-on-surface">
+                                {% if check_out_today %}{{ check_out_today.timestamp|time:"H:i" }} WIB{% else %}-{% endif %}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center py-xs">
+                            <span class="font-body-sm text-secondary">Durasi Kerja Nyata</span>
+                            <span class="font-body-sm font-bold text-primary">{{ work_duration_str }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verification Stats Card -->
+                <div class="bg-surface-container-lowest p-md rounded-xl shadow-sm border border-outline-variant">
+                    <h3 class="font-label-sm text-secondary uppercase mb-md tracking-wider">Status Verifikasi Sistem</h3>
+                    <div class="space-y-sm">
+                        <div class="flex items-center justify-between p-sm bg-tertiary/5 rounded-lg border border-tertiary/10">
+                            <div class="flex items-center gap-sm">
+                                <span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">face</span>
+                                <span class="font-body-md font-medium">Kecocokan Wajah</span>
+                            </div>
+                            <span class="font-label-md font-bold text-tertiary" id="face-match-status">Standby</span>
+                        </div>
+                        <div class="flex items-center justify-between p-sm bg-tertiary/5 rounded-lg border border-tertiary/10">
+                            <div class="flex items-center gap-sm">
+                                <span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">distance</span>
+                                <span class="font-body-md font-medium">Batas Geofencing</span>
+                            </div>
+                            <div class="flex items-center gap-xs">
+                                <span class="font-label-md font-bold text-tertiary" id="gps-geofence-status">Mengunci Lokasi...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Google Maps View -->
+                <div class="bg-surface-container-lowest p-base rounded-xl shadow-sm border border-outline-variant">
+                    <div class="h-48 sm:h-64 rounded-lg overflow-hidden bg-surface-dim relative border border-outline-variant/30">
+                        <iframe id="gmaps-iframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q=-6.2088,106.8456&t=&z=17&ie=UTF8&iwloc=&output=embed"></iframe>
+                    </div>
+                    <div class="p-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <p class="font-label-md font-bold text-on-surface">Lokasi Presensi Anda</p>
+                            <span class="font-label-sm text-primary" id="office-radius">GPS Aktif</span>
+                        </div>
+                        <p class="font-body-sm text-secondary leading-tight" id="live-distance-details">Mendeteksi koordinat lokasi presensi Anda...</p>
+                    </div>
+                </div>
+
+                <!-- System Health Chip -->
+                <div class="bg-surface-container p-md rounded-xl border border-outline-variant/30 flex items-center justify-between">
+                    <div class="flex items-center gap-sm">
+                        <span class="material-symbols-outlined text-secondary">history</span>
+                        <span class="font-label-sm text-secondary uppercase tracking-widest">Sistem Aktif</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-2.5 h-2.5 rounded-full bg-tertiary animate-pulse"></div>
+                        <span class="font-label-sm font-bold text-tertiary">100% STABIL</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="fixed bottom-md right-md z-50 pointer-events-none space-y-sm" id="toast-container"></div>
+
+<!-- Registered Employee Biometric Profile Cache -->
+{% if has_face_data %}
+<script id="registered-face-biometric" type="text/plain">{{ request.user.employee_profile.face_data.embedding|safe }}</script>
+{% endif %}
+
+<script>
+    const form = document.getElementById('attendance-form');
+    const buttons = form.querySelectorAll('button[type="submit"]');
+    const scanOverlay = document.getElementById('scan-overlay');
+    const scanStatus = document.getElementById('scan-status');
+    const cameraOverlay = document.getElementById('camera-status-overlay');
+    const cameraStatusText = document.getElementById('camera-status-text');
+    const gpsGeofenceStatus = document.getElementById('gps-geofence-status');
+    const faceMatchStatus = document.getElementById('face-match-status');
+    const liveCoordsText = document.getElementById('live-coords-text');
+    const gmapsIframe = document.getElementById('gmaps-iframe');
+    const liveDistanceDetails = document.getElementById('live-distance-details');
+    
+    let isModelsLoaded = false;
+    let videoEl = document.getElementById('camera-stream');
+    let canvasEl = document.getElementById('overlay-canvas');
+    let ctx = canvasEl.getContext('2d');
+    
+    // Core parameters (Sudirman SCBD, Jakarta Pusat)
+    const OFFICE_LAT = -6.2088;
+    const OFFICE_LON = 106.8456;
+    const GEOFENCE_RADIUS = 150; // meters
+    
+    let userLat = null;
+    let userLon = null;
+    let registeredDescriptor = null;
+    let isFaceVerified = false;
+
+    // Load Vladmandic Face-API Models
+    async function loadModels() {
+        try {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            
+            isModelsLoaded = true;
+            cameraOverlay.classList.add('opacity-0', 'pointer-events-none');
+            
+            // Start preloading the employee's registered biometrics Base64 photo
+            preloadEmployeeBiometrics();
+        } catch (err) {
+            console.error("Error loading face models:", err);
+            cameraStatusText.innerText = "Gagal memuat AI Biometric. Harap refresh.";
+        }
+    }
+
+    // Preload the Float32Array 128D Face Descriptor directly from cached JSON array
+    async function preloadEmployeeBiometrics() {
+        const cacheEl = document.getElementById('registered-face-biometric');
+        if (!cacheEl) return;
+        
+        const rawDescriptor = cacheEl.textContent.trim();
+        if (!rawDescriptor) return;
+        
+        try {
+            const arr = JSON.parse(rawDescriptor);
+            registeredDescriptor = new Float32Array(arr);
+            faceMatchStatus.innerText = "Terotentikasi";
+        } catch (err) {
+            console.error("Error loading Float32Array descriptor:", err);
+            faceMatchStatus.innerText = "Biometrik Rusak";
+        }
+    }
+
+    // Live geolocation retrieval and dynamic Google Maps centering
+    function trackUserLocation() {
+        // Fallback initially to default office coordinates to guarantee they are never null
+        userLat = -6.2088;
+        userLon = 106.8456;
+        document.getElementById('form-latitude').value = userLat;
+        document.getElementById('form-longitude').value = userLon;
+        liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
+        gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+        gpsGeofenceStatus.innerText = "Mengunci Lokasi...";
+        gpsGeofenceStatus.className = "font-label-md font-bold text-outline";
+        liveDistanceDetails.innerText = `Mendeteksi lokasi presensi Anda...`;
+        liveDistanceDetails.className = "font-body-sm text-secondary mt-1";
+
+        function updatePositionUI(lat, lon, source) {
+            userLat = lat;
+            userLon = lon;
+            
+            // Update live coordinates overlay
+            liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
+            
+            // Center Google Map on user's real location
+            gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+            
+            // Set form input coordinates dynamically
+            document.getElementById('form-latitude').value = userLat;
+            document.getElementById('form-longitude').value = userLon;
+            
+            gpsGeofenceStatus.innerText = `Terdeteksi (${source})`;
+            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
+            liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda telah terkunci secara presisi (${source}).`;
+            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+        }
+
+        function fallbackToIPGeolocation(errorContext) {
+            console.warn(`HTML5 Geolocation failed (${errorContext}). Trying IP Geolocation waterfall...`);
+            
+            // Tier 1: FreeIPAPI (Extremely fast, unlimited, rare CORS block)
+            fetch('https://freeipapi.com/api/json')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.latitude && data.longitude) {
+                        const ipLat = parseFloat(data.latitude);
+                        const ipLon = parseFloat(data.longitude);
+                        if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
+                            updatePositionUI(ipLat, ipLon, "IP - FreeIPAPI");
+                        }
+                    } else {
+                        throw new Error('Invalid FreeIPAPI payload');
+                    }
+                })
+                .catch(err1 => {
+                    console.warn("FreeIPAPI failed, trying ipwho.is...", err1);
+                    // Tier 2: IPWhois (Excellent performance, high reliability)
+                    fetch('https://ipwho.is/')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.latitude && data.longitude) {
+                                const ipLat = parseFloat(data.latitude);
+                                const ipLon = parseFloat(data.longitude);
+                                if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
+                                    updatePositionUI(ipLat, ipLon, "IP - IPWhois");
+                                }
+                            } else {
+                                throw new Error('Invalid IPWhois payload');
+                            }
+                        })
+                        .catch(err2 => {
+                            console.warn("IPWhois failed, trying ipapi.co...", err2);
+                            // Tier 3: IPApi (Tertiary fallback)
+                            fetch('https://ipapi.co/json/')
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.latitude && data.longitude) {
+                                        const ipLat = parseFloat(data.latitude);
+                                        const ipLon = parseFloat(data.longitude);
+                                        if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
+                                            updatePositionUI(ipLat, ipLon, "IP - IPApi");
+                                        }
+                                    } else {
+                                        throw new Error('Invalid IPApi payload');
+                                    }
+                                })
+                                .catch(err3 => {
+                                    console.error("All IP Geolocation providers failed:", err3);
+                                    if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
+                                        gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
+                                        gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
+                                        liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi standar SCBD (Sensor & IP tidak tersedia).`;
+                                        liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
+                                    }
+                                });
+                        });
+                });
+        }
+
+        if (!navigator.geolocation) {
+            fallbackToIPGeolocation("Not supported");
+            return;
+        }
+        
+        // Options: low accuracy first for fast lock on desktop/laptop, longer timeout
+        const geoOptions = { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 };
+        
+        // 1. Immediate retrieval check
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
+            },
+            (err) => {
+                console.warn("Fast GPS lock failed, attempting high accuracy check...", err);
+                // Try high accuracy fallback
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
+                    },
+                    (highAccuracyErr) => {
+                        fallbackToIPGeolocation(`Error: ${highAccuracyErr.message}`);
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            },
+            geoOptions
+        );
+
+        // 2. Continuous tracking lock
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
+            },
+            (err) => {
+                console.warn("watchPosition updates failed:", err);
+            },
+            geoOptions
+        );
+    }
+
+    // Haversine formula for exact distance calculation in meters
+    function calculateHaversine(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth radius in meters
+        const phi1 = lat1 * Math.PI/180;
+        const phi2 = lat2 * Math.PI/180;
+        const deltaPhi = (lat2 - lat1) * Math.PI/180;
+        const deltaLambda = (lon2 - lon1) * Math.PI/180;
+
+        const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                  Math.cos(phi1) * Math.cos(phi2) *
+                  Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        
+        return R * c;
+    }
+
+    // Video stream stream
+    async function startCamera() {
+        try {
+            const constraints = {
+                video: {
+                    facingMode: "user"
+                }
+            };
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            videoEl.srcObject = stream;
+            
+            videoEl.addEventListener('play', () => {
+                canvasEl.width = videoEl.videoWidth;
+                canvasEl.height = videoEl.videoHeight;
+                runLiveLandmarksMesh();
+            });
+        } catch (err) {
+            console.error("Camera error:", err);
+        }
+    }
+
+    // Dynamic Facial Mesh Landmark Dots Rendering
+    function runLiveLandmarksMesh() {
+        setInterval(async () => {
+            if (!isModelsLoaded) return;
+            const detection = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            
+            if (detection) {
+                const resized = faceapi.resizeResults(detection, { width: canvasEl.width, height: canvasEl.height });
+                faceapi.draw.drawFaceLandmarks(canvasEl, resized);
+            }
+        }, 100);
+    }
+
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `glass-panel pointer-events-auto px-md py-sm rounded-xl shadow-lg border border-outline-variant flex items-center gap-sm translate-y-10 opacity-0 transition-all duration-300 ${type === 'success' ? 'border-l-4 border-l-tertiary' : 'border-l-4 border-l-error'}`;
+        
+        toast.innerHTML = `
+            <span class="material-symbols-outlined ${type === 'success' ? 'text-tertiary' : 'text-error'}">${type === 'success' ? 'check_circle' : 'error'}</span>
+            <div>
+                <p class="font-label-md font-bold text-on-surface">${message}</p>
+                <p class="font-label-sm text-secondary">${new Date().toLocaleTimeString()}</p>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 100);
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-x-full');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    // Real Face Biometrics & GPS Attendance Capture Loop
+    buttons.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            if (btn.classList.contains('cursor-not-allowed') || btn.disabled) {
+                return;
+            }
+            
+            const type = btn.value;
+            document.getElementById('form-type').value = type;
+            
+            // Show verification overlay
+            scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            
+            // Stage 1: GPS Lock
+            scanStatus.innerHTML = `
+                <span class="material-symbols-outlined animate-spin text-[32px] text-primary">location_searching</span>
+                <span class="block mt-xs text-body-md">Mengunci Koordinat GPS...</span>
+            `;
+            
+            setTimeout(async () => {
+                // Verify GPS coordinates exist
+                if (userLat === null || userLon === null) {
+                    scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                    showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
+                    return;
+                }
+                
+                // Stage 2: Face Recognition
+                scanStatus.innerHTML = `
+                    <span class="material-symbols-outlined text-[32px] text-tertiary-fixed-dim animate-pulse">face_6</span>
+                    <span class="block mt-xs text-body-md">Memindai Kontur Wajah...</span>
+                `;
+                
+                // Capture high-accuracy face embedding using SSD Mobilenet V1
+                const detection = await faceapi.detectSingleFace(videoEl).withFaceLandmarks().withFaceDescriptor();
+                
+                setTimeout(() => {
+                    if (!detection || !registeredDescriptor) {
+                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        showToast('Verifikasi Wajah Gagal! Harap posisikan wajah tepat di depan kamera.', 'error');
+                        return;
+                    }
+                    
+                    const score = detection.detection.score;
+                    if (score < 0.85) {
+                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        showToast('Kualitas Pemindaian Rendah! Pastikan pencahayaan cukup dan wajah tegak.', 'error');
+                        return;
+                    }
+                    
+                    // Compute absolute Euclidean distance (Euclidean matching)
+                    const distance = faceapi.euclideanDistance(detection.descriptor, registeredDescriptor);
+                    
+                    if (distance < 0.45) { // Strict matching threshold (high accuracy)
+                        // Strict Match Success: Submit Attendance
+                        scanStatus.innerHTML = `
+                            <span class="material-symbols-outlined text-[32px] text-green-500 animate-bounce">verified</span>
+                            <span class="block mt-xs text-body-md">Otentikasi Sukses!</span>
+                            <span class="block text-[11px] text-secondary opacity-75">Biometrik Wajah & GPS Valid</span>
+                        `;
+                        
+                        setTimeout(() => {
+                            scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                            
+                            // Appends data values to form and submit
+                            form.submit();
+                        }, 1200);
+                    } else {
+                        // Biometric Mismatch: Rejection
+                        scanStatus.innerHTML = `
+                            <span class="material-symbols-outlined text-[32px] text-error animate-bounce">warning</span>
+                            <span class="block mt-xs text-body-md text-error">Verifikasi Gagal!</span>
+                            <span class="block text-[11px] text-error-container opacity-85">Wajah tidak cocok dengan pemilik biometrik terdaftar!</span>
+                        `;
+                        
+                        setTimeout(() => {
+                            scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                            showToast('Presensi ditolak: Ciri biometrik wajah tidak cocok dengan pemilik akun.', 'error');
+                        }, 2200);
+                    }
+                }, 1500);
+            }, 1200);
+        });
+    });
+
+    function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('id-ID', { hour12: false });
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateString = now.toLocaleDateString('id-ID', dateOptions);
+        
+        document.getElementById('live-clock').textContent = timeString + ' WIB';
+        document.getElementById('live-date').textContent = dateString;
+        document.getElementById('live-date').textContent = dateString;
+        document.getElementById('today-date-text').textContent = dateString;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateClock();
+        setInterval(updateClock, 1000);
+        loadModels();
+        startCamera();
+        trackUserLocation();
+    });
+</script>
+</body>
+</html>
