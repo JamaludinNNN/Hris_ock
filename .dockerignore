@@ -1,0 +1,15 @@
+.git
+.gitignore
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+.env
+staticfiles/
+db.sqlite3
+Dockerfile
+.dockerignore
