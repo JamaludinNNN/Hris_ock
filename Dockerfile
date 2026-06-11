@@ -28,5 +28,5 @@ RUN python manage.py collectstatic --noinput
 # Informasikan port yang digunakan (Railway akan memetakan ini secara otomatis via env PORT)
 EXPOSE 8000
 
-# Jalankan migrasi database lalu jalankan server Gunicorn saat container dimulai
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn hris_ock.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
+# Jalankan migrasi database, buat admin & profil karyawan, lalu jalankan server Gunicorn saat container dimulai
+CMD ["sh", "-c", "python manage.py migrate --noinput && python create_admin.py && python create_employee.py && gunicorn hris_ock.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
