@@ -211,7 +211,7 @@
 
             <!-- Right Column: Camera Preview -->
             <div class="col-span-12 lg:col-span-8 flex flex-col gap-md">
-                <div class="bg-black rounded-xl overflow-hidden shadow-2xl relative aspect-[16/9] flex items-center justify-center border border-outline-variant/30 scanning-grid">
+                <div class="bg-black rounded-xl overflow-hidden shadow-2xl relative aspect-square md:aspect-[16/9] flex items-center justify-center border border-outline-variant/30 scanning-grid">
                     <!-- Camera Feed -->
                     <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
                     <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] z-10"></canvas>
@@ -308,7 +308,6 @@
         try {
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
             await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
             await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
             
@@ -472,7 +471,8 @@
 
             startBtn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Frame ${framesCaptured + 1}/${totalFramesNeeded}...`;
             
-            const detections = await faceapi.detectSingleFace(videoEl).withFaceLandmarks().withFaceDescriptor();
+            const faceOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+            const detections = await faceapi.detectSingleFace(videoEl, faceOptions).withFaceLandmarks().withFaceDescriptor();
             
             if (!detections) {
                 // If no face, try again in 500ms
@@ -482,9 +482,9 @@
             }
 
             const score = detections.detection.score;
-            if (score < 0.90) {
+            if (score < 0.55) {
                 // If confidence is too low, try again in 500ms
-                startBtn.innerHTML = `<span class="material-symbols-outlined text-warning animate-pulse text-[16px]">lightbulb</span> Kurang Cahaya...`;
+                startBtn.innerHTML = `<span class="material-symbols-outlined text-warning animate-pulse text-[16px]">lightbulb</span> Kurang Jelas...`;
                 setTimeout(captureNextFrame, 500);
                 return;
             }

@@ -164,7 +164,7 @@
             <!-- Camera and Main Controls -->
             <div class="col-span-12 lg:col-span-8">
                 <div class="bg-surface-container-lowest rounded-xl p-base shadow-sm border border-outline-variant relative overflow-hidden">
-                    <div class="relative rounded-lg overflow-hidden bg-on-background aspect-video flex items-center justify-center biometric-grid">
+                    <div class="relative rounded-lg overflow-hidden bg-on-background aspect-square md:aspect-video flex items-center justify-center biometric-grid">
                         <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
                         <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover transform scale-x-[-1] z-10"></canvas>
 
@@ -412,7 +412,6 @@
         try {
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
             await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
             await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
             
@@ -459,7 +458,16 @@
         liveDistanceDetails.innerText = `Mendeteksi lokasi presensi Anda...`;
         liveDistanceDetails.className = "font-body-sm text-secondary mt-1";
 
+        let hasGPS = false;
+
         function updatePositionUI(lat, lon, source) {
+            if (source.includes("Akurat")) {
+                hasGPS = true;
+            } else if (hasGPS) {
+                // If we already got a highly accurate GPS signal, ignore coarser IP updates
+                return;
+            }
+            
             userLat = lat;
             userLon = lon;
             
@@ -473,81 +481,93 @@
             document.getElementById('form-latitude').value = userLat;
             document.getElementById('form-longitude').value = userLon;
             
-            gpsGeofenceStatus.innerText = `Terdeteksi (${source})`;
-            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-            liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda telah terkunci secara presisi (${source}).`;
-            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+            // Compute distance to office
+            const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
+            const isInside = distance <= GEOFENCE_RADIUS;
+            
+            if (isInside) {
+                gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
+                gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
+                liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda valid (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
+                liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+            } else {
+                gpsGeofenceStatus.innerText = "Di Luar Radius Kantor";
+                gpsGeofenceStatus.className = "font-label-md font-bold text-error";
+                liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda tidak valid (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
+                liveDistanceDetails.className = "font-body-sm text-error font-bold mt-1";
+            }
         }
 
         function fallbackToIPGeolocation(errorContext) {
-            console.warn(`HTML5 Geolocation failed (${errorContext}). Trying IP Geolocation waterfall...`);
+            if (hasGPS) return;
+            console.log(`Checking IP Geolocation waterfall (${errorContext})...`);
             
             // Tier 1: FreeIPAPI (Extremely fast, unlimited, rare CORS block)
             fetch('https://freeipapi.com/api/json')
                 .then(res => res.json())
                 .then(data => {
+                    if (hasGPS) return;
                     if (data.latitude && data.longitude) {
                         const ipLat = parseFloat(data.latitude);
                         const ipLon = parseFloat(data.longitude);
-                        if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
-                            updatePositionUI(ipLat, ipLon, "IP - FreeIPAPI");
-                        }
+                        updatePositionUI(ipLat, ipLon, "IP - FreeIPAPI");
                     } else {
                         throw new Error('Invalid FreeIPAPI payload');
                     }
                 })
                 .catch(err1 => {
+                    if (hasGPS) return;
                     console.warn("FreeIPAPI failed, trying ipwho.is...", err1);
                     // Tier 2: IPWhois (Excellent performance, high reliability)
                     fetch('https://ipwho.is/')
                         .then(res => res.json())
                         .then(data => {
+                            if (hasGPS) return;
                             if (data.success && data.latitude && data.longitude) {
                                 const ipLat = parseFloat(data.latitude);
                                 const ipLon = parseFloat(data.longitude);
-                                if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
-                                    updatePositionUI(ipLat, ipLon, "IP - IPWhois");
-                                }
+                                updatePositionUI(ipLat, ipLon, "IP - IPWhois");
                             } else {
                                 throw new Error('Invalid IPWhois payload');
                             }
                         })
                         .catch(err2 => {
+                            if (hasGPS) return;
                             console.warn("IPWhois failed, trying ipapi.co...", err2);
                             // Tier 3: IPApi (Tertiary fallback)
                             fetch('https://ipapi.co/json/')
                                 .then(res => res.json())
                                 .then(data => {
+                                    if (hasGPS) return;
                                     if (data.latitude && data.longitude) {
                                         const ipLat = parseFloat(data.latitude);
                                         const ipLon = parseFloat(data.longitude);
-                                        if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
-                                            updatePositionUI(ipLat, ipLon, "IP - IPApi");
-                                        }
+                                        updatePositionUI(ipLat, ipLon, "IP - IPApi");
                                     } else {
                                         throw new Error('Invalid IPApi payload');
                                     }
                                 })
                                 .catch(err3 => {
+                                    if (hasGPS) return;
                                     console.error("All IP Geolocation providers failed:", err3);
-                                    if (gpsGeofenceStatus.innerText.includes("Mengunci") || gpsGeofenceStatus.innerText.includes("Default")) {
-                                        gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
-                                        gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
-                                        liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi standar SCBD (Sensor & IP tidak tersedia).`;
-                                        liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
-                                    }
+                                    gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
+                                    gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
+                                    liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi standar SCBD (Sensor & IP tidak tersedia).`;
+                                    liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
                                 });
                         });
                 });
         }
 
+        // Fetch IP Geolocation immediately in the background as parallel fallback
+        fallbackToIPGeolocation("Initial Parallel Check");
+
         if (!navigator.geolocation) {
-            fallbackToIPGeolocation("Not supported");
             return;
         }
         
-        // Options: low accuracy first for fast lock on desktop/laptop, longer timeout
-        const geoOptions = { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 };
+        // High accuracy enabled for mobile devices to lock on real coordinates
+        const geoOptions = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
         
         // 1. Immediate retrieval check
         navigator.geolocation.getCurrentPosition(
@@ -555,17 +575,8 @@
                 updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
             },
             (err) => {
-                console.warn("Fast GPS lock failed, attempting high accuracy check...", err);
-                // Try high accuracy fallback
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
-                    },
-                    (highAccuracyErr) => {
-                        fallbackToIPGeolocation(`Error: ${highAccuracyErr.message}`);
-                    },
-                    { enableHighAccuracy: true, timeout: 5000 }
-                );
+                console.warn("High accuracy GPS lock failed, attempting fallback...", err);
+                fallbackToIPGeolocation(`Error: ${err.message}`);
             },
             geoOptions
         );
@@ -703,8 +714,9 @@
                     <span class="block mt-xs text-body-md">Memindai Kontur Wajah...</span>
                 `;
                 
-                // Capture high-accuracy face embedding using SSD Mobilenet V1
-                const detection = await faceapi.detectSingleFace(videoEl).withFaceLandmarks().withFaceDescriptor();
+                // Capture face embedding using fast TinyFaceDetector
+                const faceOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+                const detection = await faceapi.detectSingleFace(videoEl, faceOptions).withFaceLandmarks().withFaceDescriptor();
                 
                 setTimeout(() => {
                     if (!detection || !registeredDescriptor) {
@@ -714,7 +726,7 @@
                     }
                     
                     const score = detection.detection.score;
-                    if (score < 0.85) {
+                    if (score < 0.55) {
                         scanOverlay.classList.add('opacity-0', 'pointer-events-none');
                         showToast('Kualitas Pemindaian Rendah! Pastikan pencahayaan cukup dan wajah tegak.', 'error');
                         return;
