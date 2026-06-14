@@ -157,7 +157,20 @@ def registrasi(request):
             )
             return redirect('karyawan')
     employees = Employee.objects.all()
-    return render(request, 'registrasi/registrasi.html', {'employees': employees})
+    import json
+    registered_faces = []
+    for emp in employees:
+        if hasattr(emp, 'face_data') and emp.face_data:
+            registered_faces.append({
+                'id': str(emp.id),
+                'name': emp.fullname,
+                'image': emp.face_data.embedding
+            })
+    registered_faces_json = json.dumps(registered_faces)
+    return render(request, 'registrasi/registrasi.html', {
+        'employees': employees,
+        'registered_faces_json': registered_faces_json
+    })
 
 @login_required(login_url='login')
 @user_passes_test(is_hrd, login_url='dashboard')

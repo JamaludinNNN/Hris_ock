@@ -598,6 +598,13 @@
         return R * c;
     }
 
+    function resizeCanvas() {
+        if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+            canvasEl.width = videoEl.videoWidth;
+            canvasEl.height = videoEl.videoHeight;
+        }
+    }
+
     // Video stream stream
     async function startCamera() {
         try {
@@ -610,10 +617,10 @@
             videoEl.srcObject = stream;
             
             videoEl.addEventListener('play', () => {
-                canvasEl.width = videoEl.videoWidth;
-                canvasEl.height = videoEl.videoHeight;
+                resizeCanvas();
                 runLiveLandmarksMesh();
             });
+            videoEl.addEventListener('loadedmetadata', resizeCanvas);
         } catch (err) {
             console.error("Camera error:", err);
         }
@@ -623,6 +630,13 @@
     function runLiveLandmarksMesh() {
         setInterval(async () => {
             if (!isModelsLoaded) return;
+            
+            // Double check canvas is properly sized
+            if (canvasEl.width === 0 || canvasEl.height === 0) {
+                resizeCanvas();
+            }
+            if (canvasEl.width === 0) return;
+            
             const detection = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
             ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
             

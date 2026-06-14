@@ -138,13 +138,13 @@
         <input type="hidden" name="profile_image_base64" id="profile-image-base64">
         
         <!-- Profile Photo Upload -->
-        <div class="flex items-center gap-md mb-md p-md bg-surface-container-low rounded-xl border border-outline-variant/30">
-            <div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold overflow-hidden border-2 border-primary/20 shadow-sm" id="photo-preview">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-md mb-md p-md bg-surface-container-low rounded-xl border border-outline-variant/30">
+            <div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold overflow-hidden border-2 border-primary/20 shadow-sm shrink-0" id="photo-preview">
                 <span class="material-symbols-outlined text-[32px]">photo_camera</span>
             </div>
             <div>
                 <label class="block font-label-md text-on-surface-variant mb-xs font-bold">Foto Profil Karyawan</label>
-                <input type="file" id="profile-photo-input" accept="image/*" class="text-body-sm text-secondary outline-none file:mr-sm file:py-xs file:px-sm file:rounded-lg file:border-0 file:text-body-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
+                <input type="file" id="profile-photo-input" accept="image/*" class="text-body-sm text-secondary outline-none file:mr-sm file:py-xs file:px-sm file:rounded-lg file:border-0 file:text-body-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 w-full">
                 <p class="text-[10px] text-secondary mt-1">Pilih berkas foto formal untuk profil.</p>
             </div>
         </div>
@@ -153,7 +153,7 @@
             <label class="block font-label-md text-on-surface-variant mb-xs">Nama Lengkap</label>
             <input type="text" name="fullname" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
         </div>
-        <div class="grid grid-cols-2 gap-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
             <div>
                 <label class="block font-label-md text-on-surface-variant mb-xs">Email</label>
                 <input type="email" name="email" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
@@ -163,7 +163,7 @@
                 <input type="password" name="password" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
             <div>
                 <label class="block font-label-md text-on-surface-variant mb-xs">ID Karyawan</label>
                 <input type="text" name="employee_id" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
@@ -176,7 +176,7 @@
                 </select>
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
             <div>
                 <label class="block font-label-md text-on-surface-variant mb-xs">Departemen</label>
                 <input type="text" name="division" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
