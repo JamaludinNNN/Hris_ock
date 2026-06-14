@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Employee, Attendance
 from django.contrib.auth import get_user_model
+from .settings_helper import load_system_settings, save_system_settings
 import random
 
 User = get_user_model()
@@ -55,6 +56,7 @@ def presensi_view(request):
     today = timezone.localdate()
     now = timezone.now()
     local_now = timezone.localtime(now)
+    sys_settings = load_system_settings()
         
     if request.method == 'POST':
         action_type = request.POST.get('type')
@@ -66,18 +68,66 @@ def presensi_view(request):
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data,
-                'error': 'Wajah Anda belum terdaftar di sistem. Silakan registrasi terlebih dahulu.'
+                'error': 'Wajah Anda belum terdaftar di sistem. Silakan registrasi terlebih dahulu.',
+                'office_lat': sys_settings['latitude'],
+                'office_lon': sys_settings['longitude'],
+                'geofence_radius': sys_settings['radius'],
+                'verification_method': sys_settings['verification_method'],
             })
             
         # Extract real coordinates from POST parameters
         lat_val = request.POST.get('latitude')
         lon_val = request.POST.get('longitude')
+        has_coords = True
         try:
             lat = float(lat_val)
             lon = float(lon_val)
         except (TypeError, ValueError):
-            lat = -6.2088
-            lon = 106.8456
+            lat = sys_settings['latitude']
+            lon = sys_settings['longitude']
+            has_coords = False
+
+        # If geofencing is required by verification method
+        if sys_settings['verification_method'] in ['face_gps', 'gps_only']:
+            if not has_coords:
+                history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                return render(request, 'presensi/presensi.html', {
+                    'history': history,
+                    'has_face_data': has_face_data,
+                    'error': 'Gagal presensi: Koordinat GPS tidak didapatkan. Pastikan izin lokasi aktif.',
+                    'office_lat': sys_settings['latitude'],
+                    'office_lon': sys_settings['longitude'],
+                    'geofence_radius': sys_settings['radius'],
+                    'verification_method': sys_settings['verification_method'],
+                })
+            
+            # Calculate distance using Haversine formula
+            import math
+            R = 6371000.0  # Earth radius in meters
+            phi1 = math.radians(lat)
+            phi2 = math.radians(sys_settings['latitude'])
+            delta_phi = math.radians(sys_settings['latitude'] - lat)
+            delta_lambda = math.radians(sys_settings['longitude'] - lon)
+            
+            a = math.sin(delta_phi/2.0) * math.sin(delta_phi/2.0) + \
+                math.cos(phi1) * math.cos(phi2) * \
+                math.sin(delta_lambda/2.0) * math.sin(delta_lambda/2.0)
+            c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0-a))
+            distance = R * c
+            
+            # Allow +50m buffer for GPS accuracy variations in mobile browser contexts
+            allowed_radius = sys_settings['radius'] + 50.0
+            if distance > allowed_radius:
+                history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                return render(request, 'presensi/presensi.html', {
+                    'history': history,
+                    'has_face_data': has_face_data,
+                    'error': f'Gagal presensi: Anda berada di luar radius kantor ({int(distance)} meter dari kantor).',
+                    'office_lat': sys_settings['latitude'],
+                    'office_lon': sys_settings['longitude'],
+                    'geofence_radius': sys_settings['radius'],
+                    'verification_method': sys_settings['verification_method'],
+                })
             
         # Determine status:
         # Check-in is 'on_time' if checked in before 09:00 local time, else 'late'.
@@ -140,6 +190,10 @@ def presensi_view(request):
         'work_status': work_status,
         'check_in_today': check_in_today,
         'check_out_today': check_out_today,
+        'office_lat': sys_settings['latitude'],
+        'office_lon': sys_settings['longitude'],
+        'geofence_radius': sys_settings['radius'],
+        'verification_method': sys_settings['verification_method'],
     })
 
 @login_required(login_url='login')
@@ -297,20 +351,27 @@ def laporan(request):
 @user_passes_test(is_hrd, login_url='dashboard')
 def settings(request):
     if request.method == 'POST':
-        # Simulate saving settings successfully
+        latitude = request.POST.get('latitude', -6.2088)
+        longitude = request.POST.get('longitude', 106.8456)
+        radius = request.POST.get('radius', 150)
+        verification_method = request.POST.get('verification_method', 'face_gps')
+        
+        save_system_settings(latitude, longitude, radius, verification_method)
+        
         return render(request, 'settings/settings.html', {
             'success': 'Pengaturan sistem berhasil disimpan.',
-            'latitude': request.POST.get('latitude', -6.2088),
-            'longitude': request.POST.get('longitude', 106.8456),
-            'radius': request.POST.get('radius', 150),
-            'verification_method': request.POST.get('verification_method', 'face_gps')
+            'latitude': latitude,
+            'longitude': longitude,
+            'radius': radius,
+            'verification_method': verification_method
         })
         
+    sys_settings = load_system_settings()
     context = {
-        'latitude': -6.2088,
-        'longitude': 106.8456,
-        'radius': 150,
-        'verification_method': 'face_gps'
+        'latitude': sys_settings['latitude'],
+        'longitude': sys_settings['longitude'],
+        'radius': sys_settings['radius'],
+        'verification_method': sys_settings['verification_method']
     }
     return render(request, 'settings/settings.html', context)
 

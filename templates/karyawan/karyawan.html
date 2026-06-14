@@ -121,7 +121,7 @@
 <!-- TopNavBar (Shared Component) -->
 {% include "components/navbar.html" %}
 <!-- Main Content Canvas -->
-<main class="ml-[260px] pt-24 px-lg pb-xl min-h-screen">
+<main class="ml-[260px] pt-24 px-md md:px-lg pb-xl min-h-screen">
 <!-- Header Section -->
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-lg">
 <div>
@@ -232,7 +232,7 @@
 </td>
 <td class="px-md py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
-<button onclick="openEditModal('{{ emp.id|escapejs }}', '{{ emp.fullname|escapejs }}', '{{ emp.user.email|default:''|escapejs }}', '{{ emp.division|escapejs }}', '{{ emp.position|escapejs }}', '{{ emp.profile_image|default:''|escapejs }}')" class="p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
+<button data-id="{{ emp.id }}" data-fullname="{{ emp.fullname }}" data-email="{{ emp.user.email|default:'' }}" data-division="{{ emp.division }}" data-position="{{ emp.position }}" data-profile-image="{{ emp.profile_image|default:'' }}" class="edit-employee-btn p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
 <span class="material-symbols-outlined">edit</span>
 </button>
 </div>
@@ -252,7 +252,7 @@
 </main>
 <!-- Edit Employee Modal (Quick Action Overlay) -->
 <div id="edit-employee-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
-    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-lg w-full max-w-lg shadow-2xl transform scale-95 transition-all duration-300" id="edit-modal-content">
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-md md:p-lg w-full max-w-lg shadow-2xl transform scale-95 transition-all duration-300" id="edit-modal-content">
         <div class="flex justify-between items-center mb-md border-b border-outline-variant pb-sm">
             <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm font-bold">
                 <span class="material-symbols-outlined text-primary text-[28px]">edit_note</span>
@@ -430,6 +430,20 @@
         deptFilter.value = 'semua';
         statusFilter.value = 'semua';
         filterEmployees();
+    });
+
+    // Attach click event listeners to edit buttons using data attributes
+    document.querySelectorAll('.edit-employee-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const fullname = btn.getAttribute('data-fullname');
+            const email = btn.getAttribute('data-email');
+            const division = btn.getAttribute('data-division');
+            const position = btn.getAttribute('data-position');
+            const photoBase64 = btn.getAttribute('data-profile-image');
+            
+            openEditModal(id, fullname, email, division, position, photoBase64);
+        });
     });
 </script>
 </body></html>

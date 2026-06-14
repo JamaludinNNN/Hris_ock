@@ -345,7 +345,7 @@
                 <!-- Live Google Maps View -->
                 <div class="bg-surface-container-lowest p-base rounded-xl shadow-sm border border-outline-variant">
                     <div class="h-48 sm:h-64 rounded-lg overflow-hidden bg-surface-dim relative border border-outline-variant/30">
-                        <iframe id="gmaps-iframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q=-6.2088,106.8456&t=&z=17&ie=UTF8&iwloc=&output=embed"></iframe>
+                        <iframe id="gmaps-iframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q={{ office_lat }},{{ office_lon }}&t=&z=17&ie=UTF8&iwloc=&output=embed"></iframe>
                     </div>
                     <div class="p-sm">
                         <div class="flex justify-between items-start mb-1">
@@ -397,10 +397,11 @@
     let canvasEl = document.getElementById('overlay-canvas');
     let ctx = canvasEl.getContext('2d');
     
-    // Core parameters (Sudirman SCBD, Jakarta Pusat)
-    const OFFICE_LAT = -6.2088;
-    const OFFICE_LON = 106.8456;
-    const GEOFENCE_RADIUS = 150; // meters
+    // Core parameters loaded dynamically from persistent system settings
+    const OFFICE_LAT = parseFloat("{{ office_lat|escapejs }}") || -6.2088;
+    const OFFICE_LON = parseFloat("{{ office_lon|escapejs }}") || 106.8456;
+    const GEOFENCE_RADIUS = parseFloat("{{ geofence_radius|escapejs }}") || 150; // meters
+    const VERIFICATION_METHOD = "{{ verification_method|escapejs }}" || "face_gps";
     
     let userLat = null;
     let userLon = null;
@@ -447,8 +448,8 @@
     // Live geolocation retrieval and dynamic Google Maps centering
     function trackUserLocation() {
         // Fallback initially to default office coordinates to guarantee they are never null
-        userLat = -6.2088;
-        userLon = 106.8456;
+        userLat = OFFICE_LAT;
+        userLon = OFFICE_LON;
         document.getElementById('form-latitude').value = userLat;
         document.getElementById('form-longitude').value = userLon;
         liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
@@ -483,9 +484,14 @@
             
             // Compute distance to office
             const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
-            const isInside = distance <= GEOFENCE_RADIUS;
+            const isInside = (VERIFICATION_METHOD === 'face_only') || (distance <= GEOFENCE_RADIUS);
             
-            if (isInside) {
+            if (VERIFICATION_METHOD === 'face_only') {
+                gpsGeofenceStatus.innerText = "Bebas Geofencing";
+                gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
+                liveDistanceDetails.innerText = `GPS Aktif - Verifikasi geofencing dilewati (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
+                liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+            } else if (isInside) {
                 gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
                 gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
                 liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda valid (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
@@ -552,7 +558,7 @@
                                     console.error("All IP Geolocation providers failed:", err3);
                                     gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
                                     gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
-                                    liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi standar SCBD (Sensor & IP tidak tersedia).`;
+                                    liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi standar kantor (Sensor & IP tidak tersedia).`;
                                     liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
                                 });
                         });
@@ -701,14 +707,36 @@
             `;
             
             setTimeout(async () => {
-                // Verify GPS coordinates exist
-                if (userLat === null || userLon === null) {
-                    scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                    showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
+                // 1. Geofencing check (for face_gps and gps_only)
+                if (VERIFICATION_METHOD === 'face_gps' || VERIFICATION_METHOD === 'gps_only') {
+                    if (userLat === null || userLon === null) {
+                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
+                        return;
+                    }
+                    const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
+                    if (distance > GEOFENCE_RADIUS) {
+                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        showToast(`Presensi ditolak: Anda berada di luar radius kantor (${distance.toFixed(0)} meter dari kantor).`, 'error');
+                        return;
+                    }
+                }
+                
+                // 2. GPS Only Verification (no face recognition)
+                if (VERIFICATION_METHOD === 'gps_only') {
+                    scanStatus.innerHTML = `
+                        <span class="material-symbols-outlined text-[32px] text-green-500 animate-bounce">verified</span>
+                        <span class="block mt-xs text-body-md">Otentikasi Sukses!</span>
+                        <span class="block text-[11px] text-secondary opacity-75">GPS Valid (Face Scan Dilewati)</span>
+                    `;
+                    setTimeout(() => {
+                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        form.submit();
+                    }, 1200);
                     return;
                 }
                 
-                // Stage 2: Face Recognition
+                // 3. Face Recognition stage (for face_gps and face_only)
                 scanStatus.innerHTML = `
                     <span class="material-symbols-outlined text-[32px] text-tertiary-fixed-dim animate-pulse">face_6</span>
                     <span class="block mt-xs text-body-md">Memindai Kontur Wajah...</span>
