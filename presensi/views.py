@@ -408,3 +408,28 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+@login_required(login_url='login')
+def update_profile(request):
+    if request.method == 'POST':
+        fullname = request.POST.get('fullname')
+        profile_image = request.POST.get('profile_image_base64', '')
+        
+        if not hasattr(request.user, 'employee_profile'):
+            employee = Employee.objects.create(
+                user=request.user,
+                employee_id=f"EMP-{request.user.id:03d}",
+                fullname=fullname or request.user.username,
+                division="Management" if request.user.role == 'admin' else "IT",
+                position="HR Administrator" if request.user.role == 'admin' else "Karyawan"
+            )
+        else:
+            employee = request.user.employee_profile
+            
+        if fullname:
+            employee.fullname = fullname
+        if profile_image:
+            employee.profile_image = profile_image
+        employee.save()
+        
+    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))

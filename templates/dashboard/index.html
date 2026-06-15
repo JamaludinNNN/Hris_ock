@@ -196,7 +196,7 @@
 <div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col">
 <h4 class="font-headline-md text-body-lg font-bold text-on-surface mb-md">Quick Actions</h4>
 <div class="space-y-sm">
-<button class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-primary-fixed transition-colors rounded-xl group">
+<a href="{% url 'karyawan' %}" class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-primary-fixed transition-colors rounded-xl group">
 <div class="flex items-center gap-md">
 <span class="material-symbols-outlined p-sm bg-white rounded-lg text-primary" data-icon="person_add">person_add</span>
 <div class="text-left">
@@ -205,8 +205,8 @@
 </div>
 </div>
 <span class="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
-</button>
-<button class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-tertiary-fixed transition-colors rounded-xl group">
+</a>
+<a href="{% url 'laporan' %}" class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-tertiary-fixed transition-colors rounded-xl group">
 <div class="flex items-center gap-md">
 <span class="material-symbols-outlined p-sm bg-white rounded-lg text-tertiary" data-icon="description">description</span>
 <div class="text-left">
@@ -215,8 +215,8 @@
 </div>
 </div>
 <span class="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
-</button>
-<button class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-secondary-container transition-colors rounded-xl group">
+</a>
+<a href="{% url 'settings' %}" class="w-full flex items-center justify-between p-md bg-surface-container hover:bg-secondary-container transition-colors rounded-xl group">
 <div class="flex items-center gap-md">
 <span class="material-symbols-outlined p-sm bg-white rounded-lg text-secondary" data-icon="map">map</span>
 <div class="text-left">
@@ -225,7 +225,7 @@
 </div>
 </div>
 <span class="material-symbols-outlined text-secondary group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
-</button>
+</a>
 </div>
 <div class="mt-auto pt-md">
 <div class="p-md bg-primary/5 rounded-xl border border-primary/10">
