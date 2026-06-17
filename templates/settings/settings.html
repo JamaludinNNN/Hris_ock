@@ -203,6 +203,96 @@
                 </div>
             </div>
         </div>
+
+        <!-- Master Data Cabang Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-md pt-lg border-t border-outline-variant/30">
+            <!-- Left Side: Add Branch Form -->
+            <div class="bg-surface-container-lowest p-md md:p-lg rounded-xl border border-outline-variant shadow-sm space-y-md h-fit">
+                <div class="flex items-center gap-sm pb-sm border-b border-outline-variant">
+                    <span class="material-symbols-outlined text-primary text-[28px]">add_location_alt</span>
+                    <h3 class="font-headline-md text-body-lg font-bold text-on-surface">Tambah Cabang Toko</h3>
+                </div>
+                
+                <form method="POST" action="{% url 'settings' %}" class="space-y-sm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_branch">
+                    <div>
+                        <label class="block font-label-md text-on-surface-variant mb-xs">Nama Cabang / Toko</label>
+                        <input type="text" name="name" required placeholder="e.g. Cabang Bandung" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                    </div>
+                    <div>
+                        <label class="block font-label-md text-on-surface-variant mb-xs">Latitude Cabang</label>
+                        <input type="text" name="latitude" required placeholder="e.g. -6.9175" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                    </div>
+                    <div>
+                        <label class="block font-label-md text-on-surface-variant mb-xs">Longitude Cabang</label>
+                        <input type="text" name="longitude" required placeholder="e.g. 107.6191" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                    </div>
+                    <div>
+                        <label class="block font-label-md text-on-surface-variant mb-xs">Radius Absensi Valid (meter)</label>
+                        <input type="number" name="radius" value="150" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                    </div>
+                    <div class="pt-sm">
+                        <button type="submit" class="w-full bg-primary text-on-primary py-sm rounded-lg font-label-md shadow hover:bg-primary-container transition-all active:scale-95">
+                            Tambah Cabang Baru
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Side: Branch List Table -->
+            <div class="lg:col-span-2 bg-surface-container-lowest p-md md:p-lg rounded-xl border border-outline-variant shadow-sm space-y-md">
+                <div class="flex items-center gap-sm pb-sm border-b border-outline-variant">
+                    <span class="material-symbols-outlined text-primary text-[28px]">store</span>
+                    <h3 class="font-headline-md text-body-lg font-bold text-on-surface">Daftar Cabang Toko Terdaftar</h3>
+                </div>
+
+                {% if error %}
+                <div class="bg-error/10 text-error p-sm rounded-lg font-label-md border border-error/20 flex items-center gap-xs">
+                    <span class="material-symbols-outlined text-[18px]">warning</span>
+                    <span>{{ error }}</span>
+                </div>
+                {% endif %}
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-surface-container border-b border-outline-variant/50">
+                                <th class="px-md py-sm font-label-md text-secondary">Nama Cabang</th>
+                                <th class="px-md py-sm font-label-md text-secondary">Latitude</th>
+                                <th class="px-md py-sm font-label-md text-secondary">Longitude</th>
+                                <th class="px-md py-sm font-label-md text-secondary">Radius</th>
+                                <th class="px-md py-sm font-label-md text-secondary text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/30">
+                            {% for branch in branches %}
+                            <tr class="hover:bg-surface-container transition-colors">
+                                <td class="px-md py-md font-body-sm font-bold text-on-surface">{{ branch.name }}</td>
+                                <td class="px-md py-md font-body-sm text-secondary">{{ branch.latitude }}</td>
+                                <td class="px-md py-md font-body-sm text-secondary">{{ branch.longitude }}</td>
+                                <td class="px-md py-md font-body-sm text-secondary">{{ branch.radius }} m</td>
+                                <td class="px-md py-md text-right">
+                                    <form method="POST" action="{% url 'settings' %}" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus cabang {{ branch.name }}?')">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_branch">
+                                        <input type="hidden" name="branch_id" value="{{ branch.id }}">
+                                        <button type="submit" class="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors">
+                                            <span class="material-symbols-outlined text-[20px]">delete</span>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-md text-secondary font-body-sm">Belum ada cabang terdaftar.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </section>
 </main>
 

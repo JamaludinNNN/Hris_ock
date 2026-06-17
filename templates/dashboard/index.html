@@ -270,7 +270,7 @@
 <span class="material-symbols-outlined text-[18px]" data-icon="face">face</span> {{ att.get_type_display }}
                                     </span>
 </td>
-<td class="px-md py-md text-body-sm">{{ att.latitude }}, {{ att.longitude }}</td>
+<td class="px-md py-md text-body-sm font-medium text-primary">{{ att.branch.name|default:"Kantor Pusat" }}</td>
 <td class="px-md py-md text-right">
 {% if att.status == 'on_time' %}
 <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-label-sm">{{ att.get_status_display }}</span>

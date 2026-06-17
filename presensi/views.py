@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Employee, Attendance
+from .models import Employee, Attendance, Branch
 from django.contrib.auth import get_user_model
 from .settings_helper import load_system_settings, save_system_settings
 import random
@@ -60,19 +60,37 @@ def presensi_view(request):
         
     if request.method == 'POST':
         action_type = request.POST.get('type')
+        branch_id = request.POST.get('branch_id')
         if not action_type or action_type not in ['in', 'out']:
             action_type = 'in'
             
+        # Retrieve target branch details
+        branch = None
+        target_lat = sys_settings['latitude']
+        target_lon = sys_settings['longitude']
+        target_radius = sys_settings['radius']
+        
+        if branch_id:
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                target_lat = float(branch.latitude)
+                target_lon = float(branch.longitude)
+                target_radius = int(branch.radius)
+            except (Branch.DoesNotExist, ValueError):
+                pass
+            
         if not has_face_data:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            branches = Branch.objects.all().order_by('name')
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data,
                 'error': 'Wajah Anda belum terdaftar di sistem. Silakan registrasi terlebih dahulu.',
-                'office_lat': sys_settings['latitude'],
-                'office_lon': sys_settings['longitude'],
-                'geofence_radius': sys_settings['radius'],
+                'office_lat': target_lat,
+                'office_lon': target_lon,
+                'geofence_radius': target_radius,
                 'verification_method': sys_settings['verification_method'],
+                'branches': branches,
             })
             
         # Extract real coordinates from POST parameters
@@ -83,31 +101,33 @@ def presensi_view(request):
             lat = float(lat_val)
             lon = float(lon_val)
         except (TypeError, ValueError):
-            lat = sys_settings['latitude']
-            lon = sys_settings['longitude']
+            lat = target_lat
+            lon = target_lon
             has_coords = False
 
         # If geofencing is required by verification method
         if sys_settings['verification_method'] in ['face_gps', 'gps_only']:
             if not has_coords:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data,
                     'error': 'Gagal presensi: Koordinat GPS tidak didapatkan. Pastikan izin lokasi aktif.',
-                    'office_lat': sys_settings['latitude'],
-                    'office_lon': sys_settings['longitude'],
-                    'geofence_radius': sys_settings['radius'],
+                    'office_lat': target_lat,
+                    'office_lon': target_lon,
+                    'geofence_radius': target_radius,
                     'verification_method': sys_settings['verification_method'],
+                    'branches': branches,
                 })
             
             # Calculate distance using Haversine formula
             import math
             R = 6371000.0  # Earth radius in meters
             phi1 = math.radians(lat)
-            phi2 = math.radians(sys_settings['latitude'])
-            delta_phi = math.radians(sys_settings['latitude'] - lat)
-            delta_lambda = math.radians(sys_settings['longitude'] - lon)
+            phi2 = math.radians(target_lat)
+            delta_phi = math.radians(target_lat - lat)
+            delta_lambda = math.radians(target_lon - lon)
             
             a = math.sin(delta_phi/2.0) * math.sin(delta_phi/2.0) + \
                 math.cos(phi1) * math.cos(phi2) * \
@@ -116,17 +136,19 @@ def presensi_view(request):
             distance = R * c
             
             # Allow +50m buffer for GPS accuracy variations in mobile browser contexts
-            allowed_radius = sys_settings['radius'] + 50.0
+            allowed_radius = target_radius + 50.0
             if distance > allowed_radius:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data,
-                    'error': f'Gagal presensi: Anda berada di luar radius kantor ({int(distance)} meter dari kantor).',
-                    'office_lat': sys_settings['latitude'],
-                    'office_lon': sys_settings['longitude'],
-                    'geofence_radius': sys_settings['radius'],
+                    'error': f'Gagal presensi: Anda berada di luar radius kantor cabang ({int(distance)} meter dari cabang).',
+                    'office_lat': target_lat,
+                    'office_lon': target_lon,
+                    'geofence_radius': target_radius,
                     'verification_method': sys_settings['verification_method'],
+                    'branches': branches,
                 })
             
         # Determine status:
@@ -151,6 +173,7 @@ def presensi_view(request):
             
         Attendance.objects.create(
             employee=employee,
+            branch=branch,
             type=action_type,
             latitude=lat,
             longitude=lon,
@@ -183,6 +206,7 @@ def presensi_view(request):
             work_status = "working"
 
     history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+    branches = Branch.objects.all().order_by('name')
     return render(request, 'presensi/presensi.html', {
         'history': history,
         'has_face_data': has_face_data,
@@ -194,6 +218,7 @@ def presensi_view(request):
         'office_lon': sys_settings['longitude'],
         'geofence_radius': sys_settings['radius'],
         'verification_method': sys_settings['verification_method'],
+        'branches': branches,
     })
 
 @login_required(login_url='login')
@@ -350,28 +375,63 @@ def laporan(request):
 @login_required(login_url='login')
 @user_passes_test(is_hrd, login_url='dashboard')
 def settings(request):
+    success_msg = None
+    error_msg = None
+    
     if request.method == 'POST':
-        latitude = request.POST.get('latitude', -6.2088)
-        longitude = request.POST.get('longitude', 106.8456)
-        radius = request.POST.get('radius', 150)
-        verification_method = request.POST.get('verification_method', 'face_gps')
+        action = request.POST.get('action')
         
-        save_system_settings(latitude, longitude, radius, verification_method)
-        
-        return render(request, 'settings/settings.html', {
-            'success': 'Pengaturan sistem berhasil disimpan.',
-            'latitude': latitude,
-            'longitude': longitude,
-            'radius': radius,
-            'verification_method': verification_method
-        })
-        
+        if action == 'add_branch':
+            name = request.POST.get('name')
+            latitude = request.POST.get('latitude')
+            longitude = request.POST.get('longitude')
+            radius = request.POST.get('radius', 150)
+            
+            if name and latitude and longitude:
+                try:
+                    Branch.objects.create(
+                        name=name,
+                        latitude=float(latitude),
+                        longitude=float(longitude),
+                        radius=int(radius)
+                    )
+                    success_msg = f"Cabang '{name}' berhasil ditambahkan."
+                except Exception as e:
+                    error_msg = f"Gagal menambahkan cabang: {str(e)}"
+            else:
+                error_msg = "Semua bidang cabang harus diisi."
+                
+        elif action == 'delete_branch':
+            branch_id = request.POST.get('branch_id')
+            if branch_id:
+                try:
+                    branch = Branch.objects.get(id=branch_id)
+                    branch_name = branch.name
+                    branch.delete()
+                    success_msg = f"Cabang '{branch_name}' berhasil dihapus."
+                except Branch.DoesNotExist:
+                    error_msg = "Cabang tidak ditemukan."
+                    
+        else:
+            # Save global config
+            latitude = request.POST.get('latitude', -6.2088)
+            longitude = request.POST.get('longitude', 106.8456)
+            radius = request.POST.get('radius', 150)
+            verification_method = request.POST.get('verification_method', 'face_gps')
+            
+            save_system_settings(latitude, longitude, radius, verification_method)
+            success_msg = "Pengaturan global berhasil disimpan."
+
     sys_settings = load_system_settings()
+    branches = Branch.objects.all().order_by('name')
     context = {
         'latitude': sys_settings['latitude'],
         'longitude': sys_settings['longitude'],
         'radius': sys_settings['radius'],
-        'verification_method': sys_settings['verification_method']
+        'verification_method': sys_settings['verification_method'],
+        'branches': branches,
+        'success': success_msg,
+        'error': error_msg,
     }
     return render(request, 'settings/settings.html', context)
 

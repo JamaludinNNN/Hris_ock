@@ -225,7 +225,10 @@
                                     {{ att.get_type_display }}
                                 </span>
                             </td>
-                            <td class="px-md py-md text-body-sm text-secondary">{{ att.latitude }}, {{ att.longitude }}</td>
+                            <td class="px-md py-md text-body-sm">
+                                <span class="font-medium text-on-surface">{{ att.branch.name|default:"Kantor Pusat" }}</span>
+                                <span class="block text-[11px] text-secondary">{{ att.latitude }}, {{ att.longitude }}</span>
+                            </td>
                             <td class="px-md py-md text-right">
                                 {% if att.status == 'on_time' %}
                                 <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-label-sm font-medium">Tepat Waktu</span>

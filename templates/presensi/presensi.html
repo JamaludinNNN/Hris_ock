@@ -211,20 +211,34 @@
                     </div>
 
                     <!-- Refined Action Buttons -->
-                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col sm:flex-row gap-sm sm:gap-md w-full">
+                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col gap-sm sm:gap-md w-full">
                         {% csrf_token %}
                         <input type="hidden" name="latitude" id="form-latitude">
                         <input type="hidden" name="longitude" id="form-longitude">
                         <input type="hidden" name="type" id="form-type">
                         
-                        <button type="submit" name="type" value="in" {% if not has_face_data %}disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-surface-container text-on-surface font-headline-md py-md sm:py-lg rounded-xl shadow hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
-                            <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
-                            Presensi Masuk
-                        </button>
-                        <button type="submit" name="type" value="out" {% if not has_face_data %}disabled class="flex-1 bg-primary/50 text-on-primary/50 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-primary text-on-primary font-headline-md py-md sm:py-lg rounded-xl shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
-                            <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
-                            Presensi Keluar
-                        </button>
+                        <!-- Branch Selection Dropdown -->
+                        <div class="w-full">
+                            <label for="branch-select" class="block font-label-md text-on-surface-variant mb-xs text-xs sm:text-sm font-semibold">Cabang Toko Absensi</label>
+                            <select id="branch-select" name="branch_id" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-xs sm:text-body-sm shadow-sm transition-all">
+                                {% for branch in branches %}
+                                <option value="{{ branch.id }}" {% if forloop.first %}selected{% endif %}>{{ branch.name }} (Radius: {{ branch.radius }}m)</option>
+                                {% empty %}
+                                <option value="">Kantor Pusat (Bawaan)</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="flex flex-col sm:flex-row gap-sm sm:gap-md w-full">
+                            <button type="submit" name="type" value="in" {% if not has_face_data %}disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-surface-container text-on-surface font-headline-md py-md sm:py-lg rounded-xl shadow hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
+                                <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
+                                Presensi Masuk
+                            </button>
+                            <button type="submit" name="type" value="out" {% if not has_face_data %}disabled class="flex-1 bg-primary/50 text-on-primary/50 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-primary text-on-primary font-headline-md py-md sm:py-lg rounded-xl shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
+                                <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
+                                Presensi Keluar
+                            </button>
+                        </div>
                     </form>
 
                     {% if not has_face_data %}
@@ -398,15 +412,190 @@
     let ctx = canvasEl.getContext('2d');
     
     // Core parameters loaded dynamically from persistent system settings
-    const OFFICE_LAT = parseFloat("{{ office_lat|escapejs }}") || -6.2088;
-    const OFFICE_LON = parseFloat("{{ office_lon|escapejs }}") || 106.8456;
-    const GEOFENCE_RADIUS = parseFloat("{{ geofence_radius|escapejs }}") || 150; // meters
+    let OFFICE_LAT = parseFloat("{{ office_lat|escapejs }}") || -6.2088;
+    let OFFICE_LON = parseFloat("{{ office_lon|escapejs }}") || 106.8456;
+    let GEOFENCE_RADIUS = parseFloat("{{ geofence_radius|escapejs }}") || 150; // meters
     const VERIFICATION_METHOD = "{{ verification_method|escapejs }}" || "face_gps";
     
     let userLat = null;
     let userLon = null;
     let registeredDescriptor = null;
     let isFaceVerified = false;
+    let hasGPS = false;
+
+    // Dictionary of all branches for client-side lookup
+    const branchesData = {
+        {% for branch in branches %}
+        "{{ branch.id }}": {
+            lat: parseFloat("{{ branch.latitude|escapejs }}"),
+            lon: parseFloat("{{ branch.longitude|escapejs }}"),
+            radius: parseInt("{{ branch.radius|escapejs }}"),
+            name: "{{ branch.name|escapejs }}"
+        },
+        {% endfor %}
+    };
+
+    function syncOfficeCoordinatesFromSelectedBranch() {
+        const select = document.getElementById('branch-select');
+        if (select && select.value) {
+            const branchId = select.value;
+            if (branchesData[branchId]) {
+                const b = branchesData[branchId];
+                OFFICE_LAT = b.lat;
+                OFFICE_LON = b.lon;
+                GEOFENCE_RADIUS = b.radius;
+            }
+        }
+    }
+
+    function handleBranchChange() {
+        syncOfficeCoordinatesFromSelectedBranch();
+        
+        // Update office radius display element if it exists
+        const officeRadiusEl = document.getElementById('office-radius');
+        if (officeRadiusEl) {
+            officeRadiusEl.innerText = `Radius: ${GEOFENCE_RADIUS}m`;
+        }
+
+        // If we have a user position, recalculate and update the UI
+        if (userLat !== null && userLon !== null && hasGPS) {
+            updatePositionUI(userLat, userLon, "Akurat");
+        } else {
+            // Update fallback coordinates to show the selected branch
+            userLat = OFFICE_LAT;
+            userLon = OFFICE_LON;
+            document.getElementById('form-latitude').value = userLat;
+            document.getElementById('form-longitude').value = userLon;
+            liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
+            gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+            
+            // Re-run fallback UI distance update
+            const select = document.getElementById('branch-select');
+            let branchName = "kantor";
+            if (select && select.value && branchesData[select.value]) {
+                branchName = branchesData[select.value].name;
+            }
+            gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
+            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
+            liveDistanceDetails.innerText = `GPS Aktif (Default) - Lokasi Anda diatur ke cabang ${branchName}.`;
+            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+        }
+    }
+
+    function updatePositionUI(lat, lon, source) {
+        if (source && source.includes("Akurat")) {
+            hasGPS = true;
+        } else if (hasGPS) {
+            // If we already got a highly accurate GPS signal, ignore coarser IP updates
+            return;
+        }
+        
+        userLat = lat;
+        userLon = lon;
+        
+        // Update live coordinates overlay
+        liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
+        
+        // Center Google Map on user's real location
+        gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+        
+        // Set form input coordinates dynamically
+        document.getElementById('form-latitude').value = userLat;
+        document.getElementById('form-longitude').value = userLon;
+        
+        // Compute distance to office
+        const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
+        const isInside = (VERIFICATION_METHOD === 'face_only') || (distance <= GEOFENCE_RADIUS);
+        
+        const select = document.getElementById('branch-select');
+        let branchName = "kantor";
+        if (select && select.value && branchesData[select.value]) {
+            branchName = branchesData[select.value].name;
+        }
+        
+        if (VERIFICATION_METHOD === 'face_only') {
+            gpsGeofenceStatus.innerText = "Bebas Geofencing";
+            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
+            liveDistanceDetails.innerText = `GPS Aktif - Verifikasi geofencing dilewati (Jarak: ${distance.toFixed(0)} meter dari cabang ${branchName}).`;
+            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+        } else if (isInside) {
+            gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
+            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
+            liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda valid (Jarak: ${distance.toFixed(0)} meter dari cabang ${branchName}).`;
+            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+        } else {
+            gpsGeofenceStatus.innerText = "Di Luar Radius Kantor";
+            gpsGeofenceStatus.className = "font-label-md font-bold text-error";
+            liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda tidak valid (Jarak: ${distance.toFixed(0)} meter dari cabang ${branchName}).`;
+            liveDistanceDetails.className = "font-body-sm text-error font-bold mt-1";
+        }
+    }
+
+    function fallbackToIPGeolocation(errorContext) {
+        if (hasGPS) return;
+        console.log(`Checking IP Geolocation waterfall (${errorContext})...`);
+        
+        // Tier 1: FreeIPAPI (Extremely fast, unlimited, rare CORS block)
+        fetch('https://freeipapi.com/api/json')
+            .then(res => res.json())
+            .then(data => {
+                if (hasGPS) return;
+                if (data.latitude && data.longitude) {
+                    const ipLat = parseFloat(data.latitude);
+                    const ipLon = parseFloat(data.longitude);
+                    updatePositionUI(ipLat, ipLon, "IP - FreeIPAPI");
+                } else {
+                    throw new Error('Invalid FreeIPAPI payload');
+                }
+            })
+            .catch(err1 => {
+                if (hasGPS) return;
+                console.warn("FreeIPAPI failed, trying ipwho.is...", err1);
+                // Tier 2: IPWhois (Excellent performance, high reliability)
+                fetch('https://ipwho.is/')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (hasGPS) return;
+                        if (data.success && data.latitude && data.longitude) {
+                            const ipLat = parseFloat(data.latitude);
+                            const ipLon = parseFloat(data.longitude);
+                            updatePositionUI(ipLat, ipLon, "IP - IPWhois");
+                        } else {
+                            throw new Error('Invalid IPWhois payload');
+                        }
+                    })
+                    .catch(err2 => {
+                        if (hasGPS) return;
+                        console.warn("IPWhois failed, trying ipapi.co...", err2);
+                        // Tier 3: IPApi (Tertiary fallback)
+                        fetch('https://ipapi.co/json/')
+                            .then(res => res.json())
+                            .then(data => {
+                                if (hasGPS) return;
+                                if (data.latitude && data.longitude) {
+                                    const ipLat = parseFloat(data.latitude);
+                                    const ipLon = parseFloat(data.longitude);
+                                    updatePositionUI(ipLat, ipLon, "IP - IPApi");
+                                } else {
+                                    throw new Error('Invalid IPApi payload');
+                                }
+                            })
+                            .catch(err3 => {
+                                if (hasGPS) return;
+                                console.error("All IP Geolocation providers failed:", err3);
+                                gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
+                                gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
+                                const select = document.getElementById('branch-select');
+                                let branchName = "kantor";
+                                if (select && select.value && branchesData[select.value]) {
+                                    branchName = branchesData[select.value].name;
+                                }
+                                liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi cabang ${branchName} (Sensor & IP tidak tersedia).`;
+                                liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
+                            });
+                    });
+            });
+    }
 
     // Load Vladmandic Face-API Models
     async function loadModels() {
@@ -458,112 +647,6 @@
         gpsGeofenceStatus.className = "font-label-md font-bold text-outline";
         liveDistanceDetails.innerText = `Mendeteksi lokasi presensi Anda...`;
         liveDistanceDetails.className = "font-body-sm text-secondary mt-1";
-
-        let hasGPS = false;
-
-        function updatePositionUI(lat, lon, source) {
-            if (source.includes("Akurat")) {
-                hasGPS = true;
-            } else if (hasGPS) {
-                // If we already got a highly accurate GPS signal, ignore coarser IP updates
-                return;
-            }
-            
-            userLat = lat;
-            userLon = lon;
-            
-            // Update live coordinates overlay
-            liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
-            
-            // Center Google Map on user's real location
-            gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
-            
-            // Set form input coordinates dynamically
-            document.getElementById('form-latitude').value = userLat;
-            document.getElementById('form-longitude').value = userLon;
-            
-            // Compute distance to office
-            const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
-            const isInside = (VERIFICATION_METHOD === 'face_only') || (distance <= GEOFENCE_RADIUS);
-            
-            if (VERIFICATION_METHOD === 'face_only') {
-                gpsGeofenceStatus.innerText = "Bebas Geofencing";
-                gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-                liveDistanceDetails.innerText = `GPS Aktif - Verifikasi geofencing dilewati (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
-                liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
-            } else if (isInside) {
-                gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
-                gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-                liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda valid (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
-                liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
-            } else {
-                gpsGeofenceStatus.innerText = "Di Luar Radius Kantor";
-                gpsGeofenceStatus.className = "font-label-md font-bold text-error";
-                liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda tidak valid (Jarak: ${distance.toFixed(0)} meter dari kantor).`;
-                liveDistanceDetails.className = "font-body-sm text-error font-bold mt-1";
-            }
-        }
-
-        function fallbackToIPGeolocation(errorContext) {
-            if (hasGPS) return;
-            console.log(`Checking IP Geolocation waterfall (${errorContext})...`);
-            
-            // Tier 1: FreeIPAPI (Extremely fast, unlimited, rare CORS block)
-            fetch('https://freeipapi.com/api/json')
-                .then(res => res.json())
-                .then(data => {
-                    if (hasGPS) return;
-                    if (data.latitude && data.longitude) {
-                        const ipLat = parseFloat(data.latitude);
-                        const ipLon = parseFloat(data.longitude);
-                        updatePositionUI(ipLat, ipLon, "IP - FreeIPAPI");
-                    } else {
-                        throw new Error('Invalid FreeIPAPI payload');
-                    }
-                })
-                .catch(err1 => {
-                    if (hasGPS) return;
-                    console.warn("FreeIPAPI failed, trying ipwho.is...", err1);
-                    // Tier 2: IPWhois (Excellent performance, high reliability)
-                    fetch('https://ipwho.is/')
-                        .then(res => res.json())
-                        .then(data => {
-                            if (hasGPS) return;
-                            if (data.success && data.latitude && data.longitude) {
-                                const ipLat = parseFloat(data.latitude);
-                                const ipLon = parseFloat(data.longitude);
-                                updatePositionUI(ipLat, ipLon, "IP - IPWhois");
-                            } else {
-                                throw new Error('Invalid IPWhois payload');
-                            }
-                        })
-                        .catch(err2 => {
-                            if (hasGPS) return;
-                            console.warn("IPWhois failed, trying ipapi.co...", err2);
-                            // Tier 3: IPApi (Tertiary fallback)
-                            fetch('https://ipapi.co/json/')
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (hasGPS) return;
-                                    if (data.latitude && data.longitude) {
-                                        const ipLat = parseFloat(data.latitude);
-                                        const ipLon = parseFloat(data.longitude);
-                                        updatePositionUI(ipLat, ipLon, "IP - IPApi");
-                                    } else {
-                                        throw new Error('Invalid IPApi payload');
-                                    }
-                                })
-                                .catch(err3 => {
-                                    if (hasGPS) return;
-                                    console.error("All IP Geolocation providers failed:", err3);
-                                    gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
-                                    gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
-                                    liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi standar kantor (Sensor & IP tidak tersedia).`;
-                                    liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
-                                });
-                        });
-                });
-        }
 
         // Fetch IP Geolocation immediately in the background as parallel fallback
         fallbackToIPGeolocation("Initial Parallel Check");
@@ -810,6 +893,13 @@
     document.addEventListener('DOMContentLoaded', () => {
         updateClock();
         setInterval(updateClock, 1000);
+        
+        const branchSelect = document.getElementById('branch-select');
+        if (branchSelect) {
+            branchSelect.addEventListener('change', handleBranchChange);
+        }
+        syncOfficeCoordinatesFromSelectedBranch();
+
         loadModels();
         startCamera();
         trackUserLocation();

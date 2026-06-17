@@ -19,6 +19,15 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.employee_id} - {self.fullname}"
 
+class Branch(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    radius = models.IntegerField(default=150)
+
+    def __str__(self):
+        return self.name
+
 class FaceData(models.Model):
     employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name='face_data')
     embedding = models.TextField() 
@@ -34,6 +43,7 @@ class Attendance(models.Model):
         ('out', 'Clock Out'),
     )
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendances')
+    branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True, related_name='attendances')
     timestamp = models.DateTimeField(auto_now_add=True)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='in')
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
