@@ -26,25 +26,54 @@
         <button class="md:hidden material-symbols-outlined text-secondary hover:text-primary transition-all duration-200 active:scale-90" onclick="toggleSidebar(false)">close</button>
     </div>
     <nav class="flex-1 px-sm space-y-xs">
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'dashboard' %}">
+        <!-- Dashboard -->
+        {% if request.resolver_match.url_name == 'dashboard' %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'dashboard' %}">
+        {% else %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'dashboard' %}">
+        {% endif %}
             <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
             <span class="font-body-md text-body-md">Dashboard</span>
         </a>
+        
+        <!-- Karyawan (Admin only) -->
         {% if request.user.role == 'admin' or request.user.is_superuser %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'karyawan' or request.resolver_match.url_name == 'tambah_karyawan' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'karyawan' %}">
-            <span class="material-symbols-outlined" data-icon="groups">groups</span>
-            <span class="font-body-md text-body-md">Karyawan</span>
-        </a>
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'registrasi' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'registrasi' %}">
-            <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
-            <span class="font-body-md text-body-md">Registrasi Wajah</span>
-        </a>
+            {% if request.resolver_match.url_name == 'karyawan' or request.resolver_match.url_name == 'tambah_karyawan' %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'karyawan' %}">
+            {% else %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'karyawan' %}">
+            {% endif %}
+                <span class="material-symbols-outlined" data-icon="groups">groups</span>
+                <span class="font-body-md text-body-md">Karyawan</span>
+            </a>
+            
+            <!-- Registrasi Wajah (Admin only) -->
+            {% if request.resolver_match.url_name == 'registrasi' %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'registrasi' %}">
+            {% else %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'registrasi' %}">
+            {% endif %}
+                <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
+                <span class="font-body-md text-body-md">Registrasi Wajah</span>
+            </a>
         {% endif %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'presensi' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'presensi' %}">
+        
+        <!-- Presensi -->
+        {% if request.resolver_match.url_name == 'presensi' %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'presensi' %}">
+        {% else %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'presensi' %}">
+        {% endif %}
             <span class="material-symbols-outlined" data-icon="timer">timer</span>
             <span class="font-body-md text-body-md">Presensi</span>
         </a>
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'laporan' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95" href="{% url 'laporan' %}">
+        
+        <!-- Laporan -->
+        {% if request.resolver_match.url_name == 'laporan' %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'laporan' %}">
+        {% else %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'laporan' %}">
+        {% endif %}
             <span class="material-symbols-outlined" data-icon="assessment">assessment</span>
             <span class="font-body-md text-body-md">Laporan</span>
         </a>
@@ -56,10 +85,14 @@
         </a>
         <div class="pt-md border-t border-outline-variant space-y-xs">
             {% if request.user.role == 'admin' or request.user.is_superuser %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'settings' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors active:scale-95{% endif %}" href="{% url 'settings' %}">
-                <span class="material-symbols-outlined" data-icon="settings">settings</span>
-                <span class="font-body-md text-body-md">Settings</span>
-            </a>
+                {% if request.resolver_match.url_name == 'settings' %}
+                <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'settings' %}">
+                {% else %}
+                <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors active:scale-95" href="{% url 'settings' %}">
+                {% endif %}
+                    <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                    <span class="font-body-md text-body-md">Settings</span>
+                </a>
             {% endif %}
             <a class="flex items-center gap-sm px-md py-sm rounded-lg text-error hover:bg-error-container transition-colors active:scale-95" href="{% url 'logout' %}">
                 <span class="material-symbols-outlined" data-icon="logout">logout</span>

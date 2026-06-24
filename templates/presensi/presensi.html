@@ -216,6 +216,13 @@
                         <input type="hidden" name="latitude" id="form-latitude">
                         <input type="hidden" name="longitude" id="form-longitude">
                         <input type="hidden" name="type" id="form-type">
+                        <input type="hidden" name="gps_accuracy" id="form-gps-accuracy">
+                        <input type="hidden" name="distance_from_office" id="form-distance">
+                        <input type="hidden" name="face_confidence_score" id="form-face-score">
+                        <input type="hidden" name="liveness_result" id="form-liveness-result">
+                        <input type="hidden" name="device_information" id="form-device-info">
+                        <input type="hidden" name="browser_information" id="form-browser-info">
+                        <input type="hidden" name="is_fake_gps" id="form-is-fake-gps">
                         
                         <!-- Branch Selection Dropdown -->
                         <div class="w-full">
@@ -480,14 +487,59 @@
             liveDistanceDetails.innerText = `GPS Aktif (Default) - Lokasi Anda diatur ke cabang ${branchName}.`;
             liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
         }
+    }    let lastCoords = [];
+    let isFakeGPS = false;
+    let currentGPSAccuracy = null;
+
+    const sampleCanvas = document.createElement('canvas');
+    const sampleCtx = sampleCanvas.getContext('2d');
+
+    function updateSampleCanvas() {
+        sampleCanvas.width = videoEl.videoWidth;
+        sampleCanvas.height = videoEl.videoHeight;
+        sampleCtx.drawImage(videoEl, 0, 0);
     }
 
-    function updatePositionUI(lat, lon, source) {
+    function getPixelRGB(x, y) {
+        if (sampleCanvas.width === 0 || sampleCanvas.height === 0) return { r: 128, g: 128, b: 128 };
+        const px = Math.min(Math.max(0, Math.floor(x)), sampleCanvas.width - 1);
+        const py = Math.min(Math.max(0, Math.floor(y)), sampleCanvas.height - 1);
+        const imgData = sampleCtx.getImageData(px, py, 1, 1).data;
+        return { r: imgData[0], g: imgData[1], b: imgData[2] };
+    }
+
+    function updatePositionUI(lat, lon, accuracy, source) {
         if (source && source.includes("Akurat")) {
             hasGPS = true;
+            currentGPSAccuracy = accuracy;
+            
+            // Track coordinate history for fake GPS detection
+            lastCoords.push({ lat: lat, lon: lon });
+            if (lastCoords.length > 5) {
+                lastCoords.shift();
+            }
+            if (lastCoords.length === 5) {
+                let allIdentical = true;
+                for (let i = 1; i < lastCoords.length; i++) {
+                    if (lastCoords[i].lat.toFixed(10) !== lastCoords[0].lat.toFixed(10) ||
+                        lastCoords[i].lon.toFixed(10) !== lastCoords[0].lon.toFixed(10)) {
+                        allIdentical = false;
+                        break;
+                    }
+                }
+                if (allIdentical) {
+                    isFakeGPS = true;
+                }
+            }
         } else if (hasGPS) {
             // If we already got a highly accurate GPS signal, ignore coarser IP updates
             return;
+        }
+        
+        // Check for Webdriver or emulator/bot environment
+        const isEmulatorOrBot = navigator.webdriver || /headless|chrome-lighthouse|lighthouse|puppeteer/i.test(navigator.userAgent);
+        if (isEmulatorOrBot) {
+            isFakeGPS = true;
         }
         
         userLat = lat;
@@ -502,6 +554,10 @@
         // Set form input coordinates dynamically
         document.getElementById('form-latitude').value = userLat;
         document.getElementById('form-longitude').value = userLon;
+        if (currentGPSAccuracy !== null) {
+            document.getElementById('form-gps-accuracy').value = currentGPSAccuracy.toFixed(1);
+        }
+        document.getElementById('form-is-fake-gps').value = isFakeGPS ? 'true' : 'false';
         
         // Compute distance to office
         const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
@@ -543,7 +599,7 @@
                 if (data.latitude && data.longitude) {
                     const ipLat = parseFloat(data.latitude);
                     const ipLon = parseFloat(data.longitude);
-                    updatePositionUI(ipLat, ipLon, "IP - FreeIPAPI");
+                    updatePositionUI(ipLat, ipLon, null, "IP - FreeIPAPI");
                 } else {
                     throw new Error('Invalid FreeIPAPI payload');
                 }
@@ -559,7 +615,7 @@
                         if (data.success && data.latitude && data.longitude) {
                             const ipLat = parseFloat(data.latitude);
                             const ipLon = parseFloat(data.longitude);
-                            updatePositionUI(ipLat, ipLon, "IP - IPWhois");
+                            updatePositionUI(ipLat, ipLon, null, "IP - IPWhois");
                         } else {
                             throw new Error('Invalid IPWhois payload');
                         }
@@ -575,8 +631,8 @@
                                 if (data.latitude && data.longitude) {
                                     const ipLat = parseFloat(data.latitude);
                                     const ipLon = parseFloat(data.longitude);
-                                    updatePositionUI(ipLat, ipLon, "IP - IPApi");
-                                } else {
+                                    updatePositionUI(ipLat, ipLon, null, "IP - IPApi");
+                               } else {
                                     throw new Error('Invalid IPApi payload');
                                 }
                             })
@@ -661,7 +717,7 @@
         // 1. Immediate retrieval check
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
+                updatePositionUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, "Akurat");
             },
             (err) => {
                 console.warn("High accuracy GPS lock failed, attempting fallback...", err);
@@ -673,7 +729,7 @@
         // 2. Continuous tracking lock
         navigator.geolocation.watchPosition(
             (pos) => {
-                updatePositionUI(pos.coords.latitude, pos.coords.longitude, "Akurat");
+                updatePositionUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, "Akurat");
             },
             (err) => {
                 console.warn("watchPosition updates failed:", err);
@@ -755,8 +811,8 @@
         toast.innerHTML = `
             <span class="material-symbols-outlined ${type === 'success' ? 'text-tertiary' : 'text-error'}">${type === 'success' ? 'check_circle' : 'error'}</span>
             <div>
-                <p class="font-label-md font-bold text-on-surface">${message}</p>
-                <p class="font-label-sm text-secondary">${new Date().toLocaleTimeString()}</p>
+                <p class="font-label-md font-bold text-on-surface text-xs sm:text-body-sm leading-tight">${message}</p>
+                <p class="font-label-sm text-secondary text-[10px] mt-0.5">${new Date().toLocaleTimeString()}</p>
             </div>
         `;
         
@@ -768,6 +824,241 @@
         }, 5000);
     }
 
+    // Liveness challenges definitions
+    const CHALLENGES = [
+        { id: 'blink', label: 'Kedip Mata', instruction: 'Silakan kedipkan mata Anda beberapa kali.' },
+        { id: 'left', label: 'Toleh Kiri', instruction: 'Silakan tolehkan kepala Anda ke arah kiri.' },
+        { id: 'right', label: 'Toleh Kanan', instruction: 'Silakan tolehkan kepala Anda ke arah kanan.' },
+        { id: 'up', label: 'Angkat Kepala', instruction: 'Silakan angkat kepala Anda (melihat ke atas).' },
+        { id: 'down', label: 'Turunkan Kepala', instruction: 'Silakan turunkan kepala Anda (melihat ke bawah).' }
+    ];
+
+    function getDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+
+    function calculateEAR(eyeLandmarks) {
+        const p1 = eyeLandmarks[0];
+        const p2 = eyeLandmarks[1];
+        const p3 = eyeLandmarks[2];
+        const p4 = eyeLandmarks[3];
+        const p5 = eyeLandmarks[4];
+        const p6 = eyeLandmarks[5];
+        
+        const vertical1 = getDistance(p2, p6);
+        const vertical2 = getDistance(p3, p5);
+        const horizontal = getDistance(p1, p4);
+        
+        return (vertical1 + vertical2) / (2.0 * horizontal);
+    }
+
+    let livenessActive = false;
+    let challengeTimer = null;
+
+    async function startLivenessVerification(type) {
+        livenessActive = true;
+        
+        // Choose random challenge
+        const challenge = CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)];
+        
+        // Reset liveness inputs
+        document.getElementById('form-liveness-result').value = 'failed';
+        
+        let timeLeft = 10;
+        scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
+        
+        const updateStatusText = () => {
+            scanStatus.innerHTML = `
+                <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
+                    <span class="material-symbols-outlined text-[48px] text-tertiary-fixed-dim animate-bounce">face_6</span>
+                    <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Tantangan Liveness:</span>
+                    <span class="block px-md py-xs bg-primary text-on-primary rounded-full text-lg font-extrabold mt-xs animate-pulse">${challenge.label}</span>
+                    <span class="block text-[11px] text-secondary-fixed mt-xs leading-normal">${challenge.instruction}</span>
+                    <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
+                </div>
+            `;
+        };
+        
+        updateStatusText();
+        
+        // Setup countdown timer
+        challengeTimer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(challengeTimer);
+                stopLiveness(false, 'Batas waktu verifikasi liveness habis.');
+            } else {
+                updateStatusText();
+            }
+        }, 1000);
+        
+        // Perform frame-by-frame challenge checking loop
+        const detectFrame = async () => {
+            if (!livenessActive) return;
+            
+            // Check canvas is sized
+            if (canvasEl.width === 0 || canvasEl.height === 0) {
+                resizeCanvas();
+            }
+            
+            updateSampleCanvas();
+            
+            // Detect all faces for multi-face protection
+            const faces = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks();
+            
+            if (!livenessActive) return;
+            
+            if (faces.length === 0) {
+                requestAnimationFrame(detectFrame);
+                return;
+            }
+            
+            if (faces.length > 1) {
+                clearInterval(challengeTimer);
+                stopLiveness(false, 'Terdeteksi lebih dari satu wajah. Presensi dibatalkan.');
+                return;
+            }
+            
+            const face = faces[0];
+            const landmarks = face.landmarks.positions;
+            
+            // Draw face landmark dots on screen canvas
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            const resized = faceapi.resizeResults(face, { width: canvasEl.width, height: canvasEl.height });
+            faceapi.draw.drawFaceLandmarks(canvasEl, resized);
+            
+            // 1. Mask Detection Heuristic
+            const colorNose = getPixelRGB(landmarks[33].x, landmarks[33].y);
+            const colorMouth = getPixelRGB(landmarks[62].x, landmarks[62].y);
+            const colorChin = getPixelRGB(landmarks[8].x, landmarks[8].y);
+            const colorNoseBridge = getPixelRGB(landmarks[27].x, landmarks[27].y);
+            
+            const dNoseMouth = Math.sqrt(Math.pow(colorNose.r - colorMouth.r, 2) + Math.pow(colorNose.g - colorMouth.g, 2) + Math.pow(colorNose.b - colorMouth.b, 2));
+            const dNoseChin = Math.sqrt(Math.pow(colorNose.r - colorChin.r, 2) + Math.pow(colorNose.g - colorChin.g, 2) + Math.pow(colorNose.b - colorChin.b, 2));
+            const dNoseBridgeMouth = Math.sqrt(Math.pow(colorNoseBridge.r - colorMouth.r, 2) + Math.pow(colorNoseBridge.g - colorMouth.g, 2) + Math.pow(colorNoseBridge.b - colorMouth.b, 2));
+            
+            const isMask = (dNoseMouth < 18 && dNoseChin < 18) || (dNoseBridgeMouth < 18);
+            if (isMask) {
+                clearInterval(challengeTimer);
+                stopLiveness(false, 'Masker terdeteksi. Silakan lepaskan masker untuk melakukan presensi.');
+                return;
+            }
+            
+            // 2. Sunglasses / Occlusion Detection Heuristic
+            const brightnessNoseBridge = 0.299 * colorNoseBridge.r + 0.587 * colorNoseBridge.g + 0.114 * colorNoseBridge.b;
+            const colorLeftEye = getPixelRGB(landmarks[37].x, landmarks[37].y);
+            const colorRightEye = getPixelRGB(landmarks[44].x, landmarks[44].y);
+            const brightnessLeftEye = 0.299 * colorLeftEye.r + 0.587 * colorLeftEye.g + 0.114 * colorLeftEye.b;
+            const brightnessRightEye = 0.299 * colorRightEye.r + 0.587 * colorRightEye.g + 0.114 * colorRightEye.b;
+            
+            const hasSunglasses = (brightnessNoseBridge - brightnessLeftEye > 42) && (brightnessNoseBridge - brightnessRightEye > 42);
+            if (hasSunglasses) {
+                clearInterval(challengeTimer);
+                stopLiveness(false, 'Mata tidak terdeteksi dengan jelas. Silakan lepaskan kacamata yang menutupi mata.');
+                return;
+            }
+            
+            // 3. Challenge check
+            let isChallengePassed = false;
+            
+            if (challenge.id === 'blink') {
+                const leftEyeLandmarks = landmarks.slice(36, 42);
+                const rightEyeLandmarks = landmarks.slice(42, 48);
+                const leftEAR = calculateEAR(leftEyeLandmarks);
+                const rightEAR = calculateEAR(rightEyeLandmarks);
+                const avgEAR = (leftEAR + rightEAR) / 2;
+                if (avgEAR < 0.18) {
+                    isChallengePassed = true;
+                }
+            } else if (challenge.id === 'left' || challenge.id === 'right') {
+                const distNoseLeft = getDistance(landmarks[30], landmarks[0]);
+                const distNoseRight = getDistance(landmarks[30], landmarks[16]);
+                const turnRatio = distNoseLeft / distNoseRight;
+                if (challenge.id === 'left' && turnRatio < 0.45) {
+                    isChallengePassed = true;
+                } else if (challenge.id === 'right' && turnRatio > 2.2) {
+                    isChallengePassed = true;
+                }
+            } else if (challenge.id === 'up' || challenge.id === 'down') {
+                const verticalNose = landmarks[33].y - landmarks[27].y;
+                const verticalChin = landmarks[8].y - landmarks[33].y;
+                const verticalRatio = verticalNose / verticalChin;
+                if (challenge.id === 'up' && verticalRatio < 0.32) {
+                    isChallengePassed = true;
+                } else if (challenge.id === 'down' && verticalRatio > 0.68) {
+                    isChallengePassed = true;
+                }
+            }
+            
+            if (isChallengePassed) {
+                clearInterval(challengeTimer);
+                livenessActive = false;
+                
+                scanStatus.innerHTML = `
+                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg">
+                        <span class="material-symbols-outlined text-[48px] text-green-400 animate-bounce">verified_user</span>
+                        <span class="block mt-sm text-sm font-bold text-white">Liveness Berhasil!</span>
+                        <span class="block text-xs text-secondary-fixed mt-xs">Mencocokkan biometric wajah...</span>
+                    </div>
+                `;
+                
+                setTimeout(async () => {
+                    // Match descriptor
+                    const detection = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks().withFaceDescriptor();
+                    
+                    if (!detection || !registeredDescriptor) {
+                        stopLiveness(false, 'Verifikasi Wajah Gagal! Harap posisikan wajah tepat di depan kamera.');
+                        return;
+                    }
+                    
+                    const distance = faceapi.euclideanDistance(detection.descriptor, registeredDescriptor);
+                    let confidence = 0.0;
+                    if (distance <= 0.45) {
+                        confidence = 1.0 - (distance * 0.1 / 0.45);
+                    } else {
+                        confidence = 0.9 - (distance - 0.45);
+                    }
+                    
+                    document.getElementById('form-face-score').value = confidence.toFixed(4);
+                    
+                    if (distance <= 0.45) {
+                        document.getElementById('form-liveness-result').value = 'success';
+                        
+                        scanStatus.innerHTML = `
+                            <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg">
+                                <span class="material-symbols-outlined text-[48px] text-green-500 animate-bounce">verified</span>
+                                <span class="block mt-sm text-sm font-bold text-white">Otentikasi Sukses!</span>
+                                <span class="block text-xs text-secondary-fixed mt-xs">Kecocokan: ${(confidence * 100).toFixed(0)}%</span>
+                            </div>
+                        `;
+                        
+                        setTimeout(() => {
+                            scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                            form.submit();
+                        }, 1200);
+                    } else {
+                        stopLiveness(false, `Presensi ditolak: Ciri biometrik wajah tidak cocok dengan pemilik akun terdaftar.`);
+                    }
+                }, 1000);
+                
+                return;
+            }
+            
+            requestAnimationFrame(detectFrame);
+        };
+        
+        requestAnimationFrame(detectFrame);
+    }
+
+    function stopLiveness(success, message) {
+        livenessActive = false;
+        if (challengeTimer) clearInterval(challengeTimer);
+        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+        if (!success) {
+            showToast(message, 'error');
+        }
+    }
+
     // Real Face Biometrics & GPS Attendance Capture Loop
     buttons.forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -777,104 +1068,57 @@
                 return;
             }
             
+            // Collect device & browser details
+            document.getElementById('form-device-info').value = `${navigator.platform} | ${navigator.vendor}`;
+            document.getElementById('form-browser-info').value = navigator.userAgent;
+            
+            // 1. Fake GPS Check
+            if (isFakeGPS) {
+                showToast('Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.', 'error');
+                return;
+            }
+            
+            // 2. GPS Accuracy check (must be <= 30m)
+            if (currentGPSAccuracy !== null && currentGPSAccuracy > 30.0) {
+                showToast(`Gagal presensi: Akurasi GPS kurang memadai (${currentGPSAccuracy.toFixed(1)} meter). Harus di bawah 30 meter.`, 'error');
+                return;
+            }
+            
             const type = btn.value;
             document.getElementById('form-type').value = type;
             
-            // Show verification overlay
-            scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
-            
-            // Stage 1: GPS Lock
-            scanStatus.innerHTML = `
-                <span class="material-symbols-outlined animate-spin text-[32px] text-primary">location_searching</span>
-                <span class="block mt-xs text-body-md">Mengunci Koordinat GPS...</span>
-            `;
-            
-            setTimeout(async () => {
-                // 1. Geofencing check (for face_gps and gps_only)
-                if (VERIFICATION_METHOD === 'face_gps' || VERIFICATION_METHOD === 'gps_only') {
-                    if (userLat === null || userLon === null) {
-                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                        showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
-                        return;
-                    }
-                    const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
-                    if (distance > GEOFENCE_RADIUS) {
-                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                        showToast(`Presensi ditolak: Anda berada di luar radius kantor (${distance.toFixed(0)} meter dari kantor).`, 'error');
-                        return;
-                    }
-                }
-                
-                // 2. GPS Only Verification (no face recognition)
-                if (VERIFICATION_METHOD === 'gps_only') {
-                    scanStatus.innerHTML = `
-                        <span class="material-symbols-outlined text-[32px] text-green-500 animate-bounce">verified</span>
-                        <span class="block mt-xs text-body-md">Otentikasi Sukses!</span>
-                        <span class="block text-[11px] text-secondary opacity-75">GPS Valid (Face Scan Dilewati)</span>
-                    `;
-                    setTimeout(() => {
-                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                        form.submit();
-                    }, 1200);
+            // 3. Geofencing check (for face_gps and gps_only)
+            if (VERIFICATION_METHOD === 'face_gps' || VERIFICATION_METHOD === 'gps_only') {
+                if (userLat === null || userLon === null) {
+                    showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
                     return;
                 }
-                
-                // 3. Face Recognition stage (for face_gps and face_only)
+                const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
+                if (distance > GEOFENCE_RADIUS) {
+                    showToast(`Presensi ditolak: Anda berada di luar radius kantor (${distance.toFixed(0)} meter dari kantor).`, 'error');
+                    return;
+                }
+            }
+            
+            // 4. GPS Only verification bypass
+            if (VERIFICATION_METHOD === 'gps_only') {
+                scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
                 scanStatus.innerHTML = `
-                    <span class="material-symbols-outlined text-[32px] text-tertiary-fixed-dim animate-pulse">face_6</span>
-                    <span class="block mt-xs text-body-md">Memindai Kontur Wajah...</span>
+                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg">
+                        <span class="material-symbols-outlined text-[48px] text-green-500 animate-bounce">verified</span>
+                        <span class="block mt-sm text-sm font-bold text-white">Otentikasi Sukses!</span>
+                        <span class="block text-xs text-secondary-fixed mt-xs">GPS Valid (Face Scan Dilewati)</span>
+                    </div>
                 `;
-                
-                // Capture face embedding using fast TinyFaceDetector
-                const faceOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
-                const detection = await faceapi.detectSingleFace(videoEl, faceOptions).withFaceLandmarks().withFaceDescriptor();
-                
                 setTimeout(() => {
-                    if (!detection || !registeredDescriptor) {
-                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                        showToast('Verifikasi Wajah Gagal! Harap posisikan wajah tepat di depan kamera.', 'error');
-                        return;
-                    }
-                    
-                    const score = detection.detection.score;
-                    if (score < 0.55) {
-                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                        showToast('Kualitas Pemindaian Rendah! Pastikan pencahayaan cukup dan wajah tegak.', 'error');
-                        return;
-                    }
-                    
-                    // Compute absolute Euclidean distance (Euclidean matching)
-                    const distance = faceapi.euclideanDistance(detection.descriptor, registeredDescriptor);
-                    
-                    if (distance < 0.45) { // Strict matching threshold (high accuracy)
-                        // Strict Match Success: Submit Attendance
-                        scanStatus.innerHTML = `
-                            <span class="material-symbols-outlined text-[32px] text-green-500 animate-bounce">verified</span>
-                            <span class="block mt-xs text-body-md">Otentikasi Sukses!</span>
-                            <span class="block text-[11px] text-secondary opacity-75">Biometrik Wajah & GPS Valid</span>
-                        `;
-                        
-                        setTimeout(() => {
-                            scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                            
-                            // Appends data values to form and submit
-                            form.submit();
-                        }, 1200);
-                    } else {
-                        // Biometric Mismatch: Rejection
-                        scanStatus.innerHTML = `
-                            <span class="material-symbols-outlined text-[32px] text-error animate-bounce">warning</span>
-                            <span class="block mt-xs text-body-md text-error">Verifikasi Gagal!</span>
-                            <span class="block text-[11px] text-error-container opacity-85">Wajah tidak cocok dengan pemilik biometrik terdaftar!</span>
-                        `;
-                        
-                        setTimeout(() => {
-                            scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                            showToast('Presensi ditolak: Ciri biometrik wajah tidak cocok dengan pemilik akun.', 'error');
-                        }, 2200);
-                    }
-                }, 1500);
-            }, 1200);
+                    scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                    form.submit();
+                }, 1200);
+                return;
+            }
+            
+            // Start Face Liveness verification
+            startLivenessVerification(type);
         });
     });
 

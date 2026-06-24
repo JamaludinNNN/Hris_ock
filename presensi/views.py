@@ -5,16 +5,18 @@ from .models import Employee, Attendance, Branch
 from django.contrib.auth import get_user_model
 from .settings_helper import load_system_settings, save_system_settings
 import random
+import math
+import json
+from django.utils import timezone
+from datetime import datetime
 
 User = get_user_model()
 
 def is_hrd(user):
-    return user.is_authenticated and (user.role == 'admin' or user.is_superuser)
+    return user.is_authenticated and (getattr(user, 'role', 'karyawan') == 'admin' or user.is_superuser)
 
 @login_required(login_url='login')
 def dashboard(request):
-    from django.utils import timezone
-    from datetime import datetime
     
     date_str = request.GET.get('date', '')
     if date_str:
@@ -51,7 +53,6 @@ def presensi_view(request):
         
     employee = request.user.employee_profile
     has_face_data = hasattr(employee, 'face_data')
-    from django.utils import timezone
     
     today = timezone.localdate()
     now = timezone.now()
@@ -93,9 +94,93 @@ def presensi_view(request):
                 'branches': branches,
             })
             
-        # Extract real coordinates from POST parameters
+        # Extract real coordinates and audit logs from POST parameters
         lat_val = request.POST.get('latitude')
         lon_val = request.POST.get('longitude')
+        gps_accuracy_val = request.POST.get('gps_accuracy')
+        distance_val = request.POST.get('distance_from_office')
+        face_score_val = request.POST.get('face_confidence_score')
+        liveness_res = request.POST.get('liveness_result')
+        device_info = request.POST.get('device_information')
+        browser_info = request.POST.get('browser_information')
+        is_fake_gps = request.POST.get('is_fake_gps') == 'true'
+
+        gps_accuracy = None
+        if gps_accuracy_val:
+            try:
+                gps_accuracy = float(gps_accuracy_val)
+            except ValueError:
+                pass
+                
+        face_confidence_score = None
+        if face_score_val:
+            try:
+                face_confidence_score = float(face_score_val)
+            except ValueError:
+                pass
+
+        # 1. Anti-Fake GPS Detection
+        if is_fake_gps:
+            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            branches = Branch.objects.all().order_by('name')
+            return render(request, 'presensi/presensi.html', {
+                'history': history,
+                'has_face_data': has_face_data,
+                'error': 'Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.',
+                'office_lat': target_lat,
+                'office_lon': target_lon,
+                'geofence_radius': target_radius,
+                'verification_method': sys_settings['verification_method'],
+                'branches': branches,
+            })
+
+        # 2. GPS Accuracy Validation (< 30 meters)
+        if gps_accuracy is not None and gps_accuracy > 30.0:
+            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            branches = Branch.objects.all().order_by('name')
+            return render(request, 'presensi/presensi.html', {
+                'history': history,
+                'has_face_data': has_face_data,
+                'error': f'Gagal presensi: Akurasi GPS kurang memadai ({gps_accuracy:.1f} meter). Harus di bawah 30 meter.',
+                'office_lat': target_lat,
+                'office_lon': target_lon,
+                'geofence_radius': target_radius,
+                'verification_method': sys_settings['verification_method'],
+                'branches': branches,
+            })
+
+        # 3. Liveness Validation (face_gps and face_only)
+        if sys_settings['verification_method'] in ['face_gps', 'face_only']:
+            if not liveness_res or liveness_res.lower() != 'success':
+                history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                branches = Branch.objects.all().order_by('name')
+                return render(request, 'presensi/presensi.html', {
+                    'history': history,
+                    'has_face_data': has_face_data,
+                    'error': 'Gagal presensi: Verifikasi keaktifan (Liveness Detection) gagal atau tidak lengkap.',
+                    'office_lat': target_lat,
+                    'office_lon': target_lon,
+                    'geofence_radius': target_radius,
+                    'verification_method': sys_settings['verification_method'],
+                    'branches': branches,
+                })
+
+        # 4. Face Confidence Validation (>= 90%)
+        if sys_settings['verification_method'] in ['face_gps', 'face_only']:
+            if face_confidence_score is not None and face_confidence_score < 0.90:
+                history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                branches = Branch.objects.all().order_by('name')
+                return render(request, 'presensi/presensi.html', {
+                    'history': history,
+                    'has_face_data': has_face_data,
+                    'error': f'Gagal presensi: Tingkat kemiripan wajah terlalu rendah ({int(face_confidence_score * 100)}%). Minimal harus 90%.',
+                    'office_lat': target_lat,
+                    'office_lon': target_lon,
+                    'geofence_radius': target_radius,
+                    'verification_method': sys_settings['verification_method'],
+                    'branches': branches,
+                })
+
         has_coords = True
         try:
             lat = float(lat_val)
@@ -105,7 +190,8 @@ def presensi_view(request):
             lon = target_lon
             has_coords = False
 
-        # If geofencing is required by verification method
+        # 5. Geofencing Validation (max radius 100 meters)
+        distance = None
         if sys_settings['verification_method'] in ['face_gps', 'gps_only']:
             if not has_coords:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
@@ -121,8 +207,7 @@ def presensi_view(request):
                     'branches': branches,
                 })
             
-            # Calculate distance using Haversine formula
-            import math
+            # Compute distance using Haversine formula
             R = 6371000.0  # Earth radius in meters
             phi1 = math.radians(lat)
             phi2 = math.radians(target_lat)
@@ -135,22 +220,35 @@ def presensi_view(request):
             c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0-a))
             distance = R * c
             
-            # Allow +50m buffer for GPS accuracy variations in mobile browser contexts
-            allowed_radius = target_radius + 50.0
+            # Enforce max radius limit of 100 meters
+            allowed_radius = min(float(target_radius), 100.0)
             if distance > allowed_radius:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
                 branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data,
-                    'error': f'Gagal presensi: Anda berada di luar radius kantor cabang ({int(distance)} meter dari cabang).',
+                    'error': f'Gagal presensi: Anda berada di luar radius kantor cabang ({int(distance)} meter dari cabang, batas maks: {int(allowed_radius)} meter).',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
                     'geofence_radius': target_radius,
                     'verification_method': sys_settings['verification_method'],
                     'branches': branches,
                 })
-            
+
+        # Calculate distance if coords are present but not forced by verification method
+        if distance is None and has_coords:
+            R = 6371000.0
+            phi1 = math.radians(lat)
+            phi2 = math.radians(target_lat)
+            delta_phi = math.radians(target_lat - lat)
+            delta_lambda = math.radians(target_lon - lon)
+            a = math.sin(delta_phi/2.0) * math.sin(delta_phi/2.0) + \
+                math.cos(phi1) * math.cos(phi2) * \
+                math.sin(delta_lambda/2.0) * math.sin(delta_lambda/2.0)
+            c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0-a))
+            distance = R * c
+
         # Determine status:
         # Check-in is 'on_time' if checked in before 09:00 local time, else 'late'.
         # Check-out is 'on_time' if elapsed duration since today's first check-in is >= 8.0 hours, else 'late' (early check-out).
@@ -171,13 +269,20 @@ def presensi_view(request):
             else:
                 status = 'late'
             
+        # Create Attendance with Audit Logs
         Attendance.objects.create(
             employee=employee,
             branch=branch,
             type=action_type,
             latitude=lat,
             longitude=lon,
-            status=status
+            status=status,
+            gps_accuracy=gps_accuracy,
+            distance_from_office=distance,
+            face_confidence_score=face_confidence_score,
+            liveness_result=liveness_res,
+            device_information=device_info,
+            browser_information=browser_info
         )
         return redirect('presensi')
         
@@ -236,7 +341,6 @@ def registrasi(request):
             )
             return redirect('karyawan')
     employees = Employee.objects.all()
-    import json
     registered_faces = []
     for emp in employees:
         if hasattr(emp, 'face_data') and emp.face_data:
@@ -335,7 +439,6 @@ def tambah_karyawan(request):
 
 @login_required(login_url='login')
 def laporan(request):
-    from datetime import datetime
     
     # Karyawan can only view their own presence reports; HRD/Admin can view all
     if not is_hrd(request.user):
@@ -456,8 +559,8 @@ def login_view(request):
                     user=user,
                     employee_id=f"EMP-{user.id:03d}",
                     fullname=user.username.split('@')[0].title(),
-                    division="Management" if user.role == 'admin' else "IT",
-                    position="HR Administrator" if user.role == 'admin' else "Karyawan"
+                    division="Management" if getattr(user, 'role', 'karyawan') == 'admin' else "IT",
+                    position="HR Administrator" if getattr(user, 'role', 'karyawan') == 'admin' else "Karyawan"
                 )
             return redirect('dashboard')
         else:
@@ -480,8 +583,8 @@ def update_profile(request):
                 user=request.user,
                 employee_id=f"EMP-{request.user.id:03d}",
                 fullname=fullname or request.user.username,
-                division="Management" if request.user.role == 'admin' else "IT",
-                position="HR Administrator" if request.user.role == 'admin' else "Karyawan"
+                division="Management" if getattr(request.user, 'role', 'karyawan') == 'admin' else "IT",
+                position="HR Administrator" if getattr(request.user, 'role', 'karyawan') == 'admin' else "Karyawan"
             )
         else:
             employee = request.user.employee_profile

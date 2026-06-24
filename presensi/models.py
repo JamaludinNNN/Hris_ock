@@ -49,6 +49,14 @@ class Attendance(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    
+    # Security Audit Logs
+    gps_accuracy = models.FloatField(null=True, blank=True)
+    distance_from_office = models.FloatField(null=True, blank=True)
+    face_confidence_score = models.FloatField(null=True, blank=True)
+    liveness_result = models.CharField(max_length=50, null=True, blank=True)
+    device_information = models.TextField(null=True, blank=True)
+    browser_information = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.employee.fullname} - {self.type} - {self.timestamp}"
