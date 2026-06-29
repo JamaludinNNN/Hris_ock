@@ -508,6 +508,11 @@
     }
 
     function handleBranchChange() {
+        const select = document.getElementById('branch-select');
+        if (select && select.value) {
+            localStorage.setItem('selected_branch_id', select.value);
+        }
+        
         syncOfficeCoordinatesFromSelectedBranch();
         
         // Update office radius display element if it exists
@@ -588,6 +593,31 @@
         } else if (hasGPS) {
             // If we already got a highly accurate GPS signal, ignore coarser IP updates
             return;
+        } else if (source && source.includes("IP")) {
+            // Check if the IP location is way too far from the selected branch (e.g. more than 10 km)
+            const ipDistance = calculateHaversine(lat, lon, OFFICE_LAT, OFFICE_LON);
+            if (ipDistance > 10000) {
+                console.warn(`IP Geolocation (${source}) is too far from selected branch (${ipDistance.toFixed(0)}m). Ignoring IP coordinates.`);
+                
+                // Keep selected branch coordinates as fallback
+                userLat = OFFICE_LAT;
+                userLon = OFFICE_LON;
+                document.getElementById('form-latitude').value = userLat;
+                document.getElementById('form-longitude').value = userLon;
+                liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
+                gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+                
+                gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
+                gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
+                const select = document.getElementById('branch-select');
+                let branchName = "kantor";
+                if (select && select.value && branchesData[select.value]) {
+                    branchName = branchesData[select.value].name;
+                }
+                liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi cabang ${branchName} (IP Geolocation tidak akurat).`;
+                liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
+                return;
+            }
         }
         
         // Check for Webdriver or emulator/bot environment
@@ -1225,6 +1255,13 @@
         
         const branchSelect = document.getElementById('branch-select');
         if (branchSelect) {
+            const savedBranchId = localStorage.getItem('selected_branch_id');
+            if (savedBranchId) {
+                const optionExists = Array.from(branchSelect.options).some(opt => opt.value === savedBranchId);
+                if (optionExists) {
+                    branchSelect.value = savedBranchId;
+                }
+            }
             branchSelect.addEventListener('change', handleBranchChange);
         }
         syncOfficeCoordinatesFromSelectedBranch();
