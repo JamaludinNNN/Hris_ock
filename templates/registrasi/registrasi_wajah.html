@@ -105,6 +105,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script>
+    if (typeof faceapi === 'undefined') {
+        document.write('<script src="https://unpkg.com/@vladmandic/face-api/dist/face-api.js"><\/script>');
+    }
+</script>
 <style>
         body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined {
@@ -324,8 +329,20 @@
 
     // Load Vladmandic Face-API Models
     async function loadModels() {
+        let MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         try {
-            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            // Test if jsDelivr is responsive within 2.5 seconds
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            await fetch('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/tiny_face_detector_model-weights_manifest.json', { signal: controller.signal });
+            clearTimeout(timeoutId);
+            console.log("Using jsDelivr CDN for models.");
+        } catch (e) {
+            console.warn("jsDelivr timed out or failed. Falling back to unpkg.com CDN...", e);
+            MODEL_URL = 'https://unpkg.com/@vladmandic/face-api/model/';
+        }
+
+        try {
             await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
             await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
             await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
