@@ -74,32 +74,18 @@ def presensi_view(request):
     sys_settings = load_system_settings()
         
     if request.method == 'POST':
-        if not employee.is_validated:
-            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
-            branches = Branch.objects.all().order_by('name')
-            return render(request, 'presensi/presensi.html', {
-                'history': history,
-                'has_face_data': has_face_data,
-                'is_validated': False,
-                'error': 'Gagal presensi: Akun Anda belum divalidasi oleh Admin.',
-                'office_lat': sys_settings['latitude'],
-                'office_lon': sys_settings['longitude'],
-                'geofence_radius': sys_settings['radius'],
-                'verification_method': sys_settings['verification_method'],
-                'branches': branches,
-            })
-
-        action_type = request.POST.get('type')
         branch_id = request.POST.get('branch_id')
-        if not action_type or action_type not in ['in', 'out']:
-            action_type = 'in'
-            
-        # Retrieve target branch details
         branch = None
-        target_lat = sys_settings['latitude']
-        target_lon = sys_settings['longitude']
-        target_radius = sys_settings['radius']
-        
+        employee_branch = employee.branch
+        if employee_branch:
+            target_lat = float(employee_branch.latitude)
+            target_lon = float(employee_branch.longitude)
+            target_radius = int(employee_branch.radius)
+        else:
+            target_lat = sys_settings['latitude']
+            target_lon = sys_settings['longitude']
+            target_radius = sys_settings['radius']
+            
         if branch_id:
             try:
                 branch = Branch.objects.get(id=branch_id)
@@ -108,6 +94,25 @@ def presensi_view(request):
                 target_radius = int(branch.radius)
             except (Branch.DoesNotExist, ValueError):
                 pass
+
+        if not employee.is_validated:
+            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            branches = Branch.objects.all().order_by('name')
+            return render(request, 'presensi/presensi.html', {
+                'history': history,
+                'has_face_data': has_face_data,
+                'is_validated': False,
+                'error': 'Gagal presensi: Akun Anda belum divalidasi oleh Admin.',
+                'office_lat': target_lat,
+                'office_lon': target_lon,
+                'geofence_radius': target_radius,
+                'verification_method': sys_settings['verification_method'],
+                'branches': branches,
+            })
+
+        action_type = request.POST.get('type')
+        if not action_type or action_type not in ['in', 'out']:
+            action_type = 'in'
             
         if not has_face_data:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
@@ -337,6 +342,17 @@ def presensi_view(request):
 
     history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
     branches = Branch.objects.all().order_by('name')
+    
+    employee_branch = employee.branch
+    if employee_branch:
+        default_lat = float(employee_branch.latitude)
+        default_lon = float(employee_branch.longitude)
+        default_radius = int(employee_branch.radius)
+    else:
+        default_lat = sys_settings['latitude']
+        default_lon = sys_settings['longitude']
+        default_radius = sys_settings['radius']
+        
     return render(request, 'presensi/presensi.html', {
         'history': history,
         'has_face_data': has_face_data,
@@ -345,9 +361,9 @@ def presensi_view(request):
         'work_status': work_status,
         'check_in_today': check_in_today,
         'check_out_today': check_out_today,
-        'office_lat': sys_settings['latitude'],
-        'office_lon': sys_settings['longitude'],
-        'geofence_radius': sys_settings['radius'],
+        'office_lat': default_lat,
+        'office_lon': default_lon,
+        'geofence_radius': default_radius,
         'verification_method': sys_settings['verification_method'],
         'branches': branches,
     })
@@ -409,6 +425,15 @@ def karyawan(request):
                 emp.division = request.POST.get('division')
                 emp.position = request.POST.get('position')
                 
+                branch_id = request.POST.get('branch')
+                if branch_id:
+                    try:
+                        emp.branch = Branch.objects.get(id=branch_id)
+                    except Branch.DoesNotExist:
+                        emp.branch = None
+                else:
+                    emp.branch = None
+                
                 profile_image = request.POST.get('profile_image_base64', '')
                 if profile_image:
                     emp.profile_image = profile_image
@@ -438,15 +463,18 @@ def karyawan(request):
     employees = Employee.objects.all()
     total_karyawan = employees.count()
     total_departemen = Employee.objects.values('division').distinct().count()
+    branches = Branch.objects.all().order_by('name')
     return render(request, 'karyawan/karyawan.html', {
         'employees': employees,
         'total_karyawan': total_karyawan,
-        'total_departemen': total_departemen
+        'total_departemen': total_departemen,
+        'branches': branches
     })
 
 @login_required(login_url='login')
 @user_passes_test(is_hrd, login_url='dashboard')
 def tambah_karyawan(request):
+    branches = Branch.objects.all().order_by('name')
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
         email = request.POST.get('email')
@@ -455,6 +483,7 @@ def tambah_karyawan(request):
         division = request.POST.get('division')
         position = request.POST.get('position')
         role = request.POST.get('role', 'karyawan')
+        branch_id = request.POST.get('branch')
         profile_image = request.POST.get('profile_image_base64', '')
         
         user = User.objects.create_user(username=email, email=email, password=password)
@@ -464,16 +493,24 @@ def tambah_karyawan(request):
             user.is_staff = True
         user.save()
         
+        branch = None
+        if branch_id:
+            try:
+                branch = Branch.objects.get(id=branch_id)
+            except Branch.DoesNotExist:
+                pass
+        
         Employee.objects.create(
             user=user,
             employee_id=employee_id,
             fullname=fullname,
             division=division,
             position=position,
-            profile_image=profile_image
+            profile_image=profile_image,
+            branch=branch
         )
         return redirect('karyawan')
-    return render(request, 'karyawan/tambah_karyawan.html')
+    return render(request, 'karyawan/tambah_karyawan.html', {'branches': branches})
 
 @login_required(login_url='login')
 def laporan(request):
@@ -640,6 +677,8 @@ def register_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
         
+    branches = Branch.objects.all().order_by('name')
+        
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
         email = request.POST.get('email')
@@ -647,20 +686,29 @@ def register_view(request):
         employee_id = request.POST.get('employee_id')
         division = request.POST.get('division')
         position = request.POST.get('position')
+        branch_id = request.POST.get('branch')
         profile_image = request.POST.get('profile_image_base64', '')
         
         # Check if email/username already exists
         if User.objects.filter(email__iexact=email).exists() or User.objects.filter(username__iexact=email).exists():
-            return render(request, 'auth/register.html', {'error': 'Email / Username sudah terdaftar.'})
+            return render(request, 'auth/register.html', {'error': 'Email / Username sudah terdaftar.', 'branches': branches})
             
         if Employee.objects.filter(employee_id=employee_id).exists():
-            return render(request, 'auth/register.html', {'error': 'ID Karyawan sudah terdaftar.'})
+            return render(request, 'auth/register.html', {'error': 'ID Karyawan sudah terdaftar.', 'branches': branches})
             
         try:
             # Create user
             user = User.objects.create_user(username=email, email=email, password=password)
             user.role = 'karyawan'
             user.save()
+            
+            # Fetch branch
+            branch = None
+            if branch_id:
+                try:
+                    branch = Branch.objects.get(id=branch_id)
+                except Branch.DoesNotExist:
+                    pass
             
             # Create Employee profile
             Employee.objects.create(
@@ -670,7 +718,8 @@ def register_view(request):
                 division=division,
                 position=position,
                 profile_image=profile_image,
-                is_validated=False
+                is_validated=False,
+                branch=branch
             )
             
             # Authenticate and login
@@ -680,9 +729,9 @@ def register_view(request):
             return redirect('presensi')
             
         except Exception as e:
-            return render(request, 'auth/register.html', {'error': f'Gagal mendaftar: {str(e)}'})
+            return render(request, 'auth/register.html', {'error': f'Gagal mendaftar: {str(e)}', 'branches': branches})
             
-    return render(request, 'auth/register.html')
+    return render(request, 'auth/register.html', {'branches': branches})
 
 
 @login_required(login_url='login')

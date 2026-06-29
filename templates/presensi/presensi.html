@@ -229,7 +229,7 @@
                             <label for="branch-select" class="block font-label-md text-on-surface-variant mb-xs text-xs sm:text-sm font-semibold">Cabang Toko Absensi</label>
                             <select id="branch-select" name="branch_id" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-xs sm:text-body-sm shadow-sm transition-all">
                                 {% for branch in branches %}
-                                <option value="{{ branch.id }}" {% if forloop.first %}selected{% endif %}>{{ branch.name }} (Radius: {{ branch.radius }}m)</option>
+                                <option value="{{ branch.id }}" {% if request.user.employee_profile.branch == branch %}selected{% elif not request.user.employee_profile.branch and forloop.first %}selected{% endif %}>{{ branch.name }} (Radius: {{ branch.radius }}m)</option>
                                 {% empty %}
                                 <option value="">Kantor Pusat (Bawaan)</option>
                                 {% endfor %}
@@ -1255,6 +1255,7 @@
         
         const branchSelect = document.getElementById('branch-select');
         if (branchSelect) {
+            {% if not request.user.employee_profile.branch %}
             const savedBranchId = localStorage.getItem('selected_branch_id');
             if (savedBranchId) {
                 const optionExists = Array.from(branchSelect.options).some(opt => opt.value === savedBranchId);
@@ -1262,6 +1263,7 @@
                     branchSelect.value = savedBranchId;
                 }
             }
+            {% endif %}
             branchSelect.addEventListener('change', handleBranchChange);
         }
         syncOfficeCoordinatesFromSelectedBranch();

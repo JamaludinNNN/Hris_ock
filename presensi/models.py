@@ -28,6 +28,13 @@ class Employee(models.Model):
     position = models.CharField(max_length=100)
     profile_image = models.TextField(null=True, blank=True)
     is_validated = models.BooleanField(default=False)
+    branch = models.ForeignKey(
+        'Branch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='employees'
+    )
 
     def __str__(self):
         return f"{self.employee_id} - {self.fullname}"

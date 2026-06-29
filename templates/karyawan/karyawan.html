@@ -184,6 +184,7 @@
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">KARYAWAN</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ID KARYAWAN</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">DEPARTEMEN</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">PENEMPATAN</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">JABATAN</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ROLE</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">STATUS</th>
@@ -209,6 +210,13 @@
 </td>
 <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.employee_id }}</td>
 <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">{{ emp.division }}</td>
+<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">
+    {% if emp.branch %}
+        {{ emp.branch.name }}
+    {% else %}
+        <span class="text-secondary font-medium italic">Kantor Pusat</span>
+    {% endif %}
+</td>
 <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.position }}</td>
 <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface font-semibold">
     {% if emp.user.role == 'admin' %}
@@ -233,11 +241,11 @@
 <td class="px-sm py-2.5 md:px-md md:py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
 {% if not emp.is_validated %}
-<button onclick="openValidateModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email|default:'' }}', '{{ emp.employee_id }}', '{{ emp.division }}', '{{ emp.position }}', '{{ emp.profile_image|default:'' }}')" class="p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all" title="Validasi Wajah & Profil Karyawan">
+<button onclick="openValidateModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email|default:'' }}', '{{ emp.employee_id }}', '{{ emp.division }}', '{{ emp.position }}', '{% if emp.branch %}{{ emp.branch.name|escapejs }}{% else %}Kantor Pusat{% endif %}', '{{ emp.profile_image|default:'' }}')" class="p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all" title="Validasi Wajah & Profil Karyawan">
 <span class="material-symbols-outlined">how_to_reg</span>
 </button>
 {% endif %}
-<button data-id="{{ emp.id }}" data-fullname="{{ emp.fullname }}" data-email="{{ emp.user.email|default:'' }}" data-division="{{ emp.division }}" data-position="{{ emp.position }}" data-profile-image="{{ emp.profile_image|default:'' }}" class="edit-employee-btn p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
+<button data-id="{{ emp.id }}" data-fullname="{{ emp.fullname }}" data-email="{{ emp.user.email|default:'' }}" data-division="{{ emp.division }}" data-position="{{ emp.position }}" data-branch-id="{{ emp.branch.id|default:'' }}" data-profile-image="{{ emp.profile_image|default:'' }}" class="edit-employee-btn p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
 <span class="material-symbols-outlined">edit</span>
 </button>
 </div>
@@ -302,6 +310,16 @@
                     <label class="block font-label-md text-on-surface-variant mb-xs">Jabatan</label>
                     <input type="text" name="position" id="edit-position" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
                 </div>
+            </div>
+
+            <div>
+                <label class="block font-label-md text-on-surface-variant mb-xs">Cabang Penempatan</label>
+                <select name="branch" id="edit-branch" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+                    <option value="">-- Tanpa Cabang (Kantor Pusat) --</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="pt-md border-t border-outline-variant/30 flex gap-sm justify-between items-center">
@@ -377,6 +395,10 @@
                         <p class="font-body-sm text-on-surface font-semibold" id="validate-position">-</p>
                     </div>
                 </div>
+                <div class="bg-surface-container-low p-sm rounded-xl space-y-xs">
+                    <p class="font-label-sm text-secondary uppercase tracking-wider text-[10px] font-bold">Cabang Penempatan</p>
+                    <p class="font-body-sm text-on-surface font-semibold" id="validate-branch">-</p>
+                </div>
             </div>
         </div>
 
@@ -393,12 +415,13 @@
     const editModal = document.getElementById('edit-employee-modal');
     const modalContent = document.getElementById('edit-modal-content');
     
-    function openEditModal(id, fullname, email, division, position, photoBase64) {
+    function openEditModal(id, fullname, email, division, position, branchId, photoBase64) {
         document.getElementById('edit-emp-id').value = id;
         document.getElementById('edit-fullname').value = fullname;
         document.getElementById('edit-email').value = email;
         document.getElementById('edit-division').value = division;
         document.getElementById('edit-position').value = position;
+        document.getElementById('edit-branch').value = branchId || '';
         
         const photoPreview = document.getElementById('edit-photo-preview');
         const base64Input = document.getElementById('edit-profile-image-base64');
@@ -433,13 +456,14 @@
     const validateModal = document.getElementById('validate-employee-modal');
     const validateModalContent = document.getElementById('validate-modal-content');
     
-    function openValidateModal(id, fullname, email, employeeId, division, position, photoBase64) {
+    function openValidateModal(id, fullname, email, employeeId, division, position, branchName, photoBase64) {
         document.getElementById('validate-emp-id').value = id;
         document.getElementById('validate-fullname').textContent = fullname;
         document.getElementById('validate-email').textContent = email;
         document.getElementById('validate-employee-id').textContent = employeeId;
         document.getElementById('validate-division').textContent = division;
         document.getElementById('validate-position').textContent = position;
+        document.getElementById('validate-branch').textContent = branchName || 'Kantor Pusat';
         
         const photoPreview = document.getElementById('validate-photo-preview');
         if (photoBase64 && photoBase64 !== 'None' && photoBase64 !== '') {
@@ -541,9 +565,10 @@
             const email = btn.getAttribute('data-email');
             const division = btn.getAttribute('data-division');
             const position = btn.getAttribute('data-position');
+            const branchId = btn.getAttribute('data-branch-id');
             const photoBase64 = btn.getAttribute('data-profile-image');
             
-            openEditModal(id, fullname, email, division, position, photoBase64);
+            openEditModal(id, fullname, email, division, position, branchId, photoBase64);
         });
     });
 </script>
