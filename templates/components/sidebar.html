@@ -79,10 +79,6 @@
         </a>
     </nav>
     <div class="mt-auto px-md space-y-sm">
-        <a class="w-full bg-primary-container text-white font-bold py-sm rounded-xl shadow-md hover:opacity-90 transition-opacity active:scale-95 flex items-center justify-center gap-2" href="{% url 'presensi' %}">
-            <span class="material-symbols-outlined text-[20px]">alarm_on</span>
-            <span>Presensi Portal</span>
-        </a>
         <div class="pt-md border-t border-outline-variant space-y-xs">
             {% if request.user.role == 'admin' or request.user.is_superuser %}
                 {% if request.resolver_match.url_name == 'settings' %}

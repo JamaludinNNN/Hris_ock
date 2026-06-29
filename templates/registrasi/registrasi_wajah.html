@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Registrasi Biometrik | Attendance Pro</title>
+<title>Registrasi Wajah Mandiri | Attendance Pro</title>
 <script src="{% static 'js/tailwind.js' %}"></script>
 <script id="tailwind-config">
         tailwind.config = {
@@ -151,8 +151,8 @@
     <div class="max-w-[1200px] mx-auto">
         <!-- Header Section -->
         <div class="mb-lg">
-            <h2 class="font-headline-lg text-headline-lg text-on-surface">Registrasi Biometrik Wajah</h2>
-            <p class="text-secondary text-body-md mt-xs">Daftarkan data wajah asli karyawan secara real-time ke dalam database terotentikasi.</p>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface">Registrasi Wajah Mandiri</h2>
+            <p class="text-secondary text-body-md mt-xs">Daftarkan data biometrik wajah Anda secara mandiri di bawah bimbingan sistem.</p>
         </div>
 
         <div class="grid grid-cols-12 gap-md">
@@ -220,7 +220,7 @@
                     <div id="instruction-overlay" class="absolute top-4 left-4 right-4 bg-black/70 backdrop-blur-md px-md py-sm rounded-xl text-white font-label-md tracking-wide text-center z-20 flex flex-col items-center justify-center gap-xs transition-all border border-white/15 hidden">
                         <span class="material-symbols-outlined text-[24px] text-tertiary animate-pulse" id="instruction-icon">camera_alt</span>
                         <span class="text-sm font-bold text-white uppercase tracking-wider" id="instruction-title">Status Pemindaian</span>
-                        <span class="text-xs text-secondary-fixed mt-xs font-semibold leading-normal" id="instruction-desc">Pilih Karyawan dan Klik "Pindai Wajah"</span>
+                        <span class="text-xs text-secondary-fixed mt-xs font-semibold leading-normal" id="instruction-desc">Klik "Mulai Pindai Wajah"</span>
                     </div>
 
                     <!-- Scanning UI -->
@@ -254,28 +254,24 @@
                 </div>
 
                 <!-- Action Bar -->
-                <form id="registration-form" method="POST" action="{% url 'registrasi' %}" class="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm w-full gap-md">
+                <form id="registration-form" method="POST" action="{% url 'registrasi_wajah' %}" class="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm w-full gap-md">
                     {% csrf_token %}
                     <input type="hidden" name="embedding" id="face-embedding">
                     <input type="hidden" name="face_image_base64" id="face-image-base64">
+                    <input type="hidden" name="employee_id" id="employee-selector" value="{{ employee.id }}">
                     <div class="flex items-center gap-md w-full">
                         <div class="h-12 w-12 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-primary">person_check</span>
+                            <span class="material-symbols-outlined text-primary">face</span>
                         </div>
                         <div class="flex-1">
-                            <p class="font-label-md text-on-surface mb-xs font-bold">Pilih Karyawan:</p>
-                            <select name="employee_id" id="employee-selector" required class="bg-surface-container-low border-none text-body-sm rounded-lg focus:ring-primary py-xs px-sm w-full">
-                                <option value="" disabled selected>-- Pilih Karyawan --</option>
-                                {% for emp in employees %}
-                                <option value="{{ emp.id }}">{{ emp.employee_id }} - {{ emp.fullname }}</option>
-                                {% endfor %}
-                            </select>
+                            <p class="font-label-md text-on-surface mb-xs font-bold">Pendaftaran Wajah Untuk Karyawan:</p>
+                            <p class="text-body-sm text-on-surface font-semibold" id="employee-display-name">{{ employee.fullname }} ({{ employee.employee_id }})</p>
                         </div>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-sm shrink-0 w-full md:w-auto">
                         <button type="button" onclick="startBiometricCapture()" class="px-md py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm active:scale-95 transition-all flex items-center justify-center gap-xs w-full sm:w-auto" id="capture-trigger-btn">
                             <span class="material-symbols-outlined text-[18px]">camera_alt</span>
-                            Pindai Wajah
+                            Mulai Pindai Wajah
                         </button>
                         <button type="submit" class="px-xl py-sm bg-outline text-on-surface/50 rounded-lg font-label-md shadow-sm opacity-50 cursor-not-allowed flex items-center justify-center w-full sm:w-auto" disabled id="save-data-btn">
                             Simpan Data Wajah
@@ -738,113 +734,100 @@
     }
 
     function markStepActive(step) {
-        const el = document.getElementById(`step-${step}`);
-        if (!el) return;
-        el.classList.remove('opacity-50');
-        el.classList.add('bg-primary-container/10', 'border', 'border-primary/20');
-        const span = el.querySelector('span');
-        if (span) {
-            span.className = 'material-symbols-outlined text-primary';
-        }
-        const desc = document.getElementById(`desc-${step}`);
-        if (desc) desc.innerText = 'Sedang memindai...';
+        document.getElementById(`step-${step}`).classList.remove('opacity-50');
+        document.getElementById(`step-${step}`).classList.add('bg-primary/5', 'border', 'border-primary/10');
+        document.getElementById(`icon-${step}`).classList.remove('text-outline');
+        document.getElementById(`icon-${step}`).classList.add('text-primary');
+        document.getElementById(`title-${step}`).classList.add('text-primary');
     }
 
     function markStepCompleted(step) {
-        const el = document.getElementById(`step-${step}`);
-        if (!el) return;
-        el.classList.remove('bg-primary-container/10', 'border-primary/20', 'opacity-50');
-        el.classList.add('bg-tertiary-container/10', 'border', 'border-tertiary/20');
-        const span = el.querySelector('span');
-        if (span) {
-            span.className = 'material-symbols-outlined text-tertiary';
-            span.innerText = 'check_circle';
-        }
-        const desc = document.getElementById(`desc-${step}`);
-        if (desc) desc.innerText = 'Berhasil dipindai ✓';
-    }
-
-    function markStepInactive(step) {
-        const el = document.getElementById(`step-${step}`);
-        if (!el) return;
-        el.className = 'flex items-start gap-sm p-sm rounded-lg opacity-50 border border-transparent';
-        const span = el.querySelector('span');
-        if (span) {
-            span.className = 'material-symbols-outlined text-outline';
-            if (step === 1) {
-                span.innerText = 'center_focus_strong';
-            } else if (step === 2) {
-                span.innerText = 'arrow_back';
-            } else {
-                span.innerText = 'arrow_forward';
-            }
-        }
-        const desc = document.getElementById(`desc-${step}`);
-        if (desc) desc.innerText = 'Belum dipindai.';
+        document.getElementById(`step-${step}`).classList.remove('bg-primary/5', 'border', 'border-primary/10');
+        document.getElementById(`step-${step}`).classList.add('opacity-90', 'bg-tertiary/5');
+        const icon = document.getElementById(`icon-${step}`);
+        icon.innerText = 'check_circle';
+        icon.classList.remove('text-primary');
+        icon.classList.add('text-tertiary');
+        document.getElementById(`title-${step}`).classList.remove('text-primary');
+        document.getElementById(`title-${step}`).classList.add('text-tertiary');
+        document.getElementById(`desc-${step}`).innerText = 'Berhasil dipindai.';
+        document.getElementById(`desc-${step}`).classList.remove('text-secondary');
+        document.getElementById(`desc-${step}`).classList.add('text-tertiary', 'font-medium');
     }
 
     function startBiometricCapture() {
-        if (!employeeSelector.value) {
-            alert("Pilih profil karyawan terlebih dahulu sebelum memulai pemindaian biometrik.");
+        if (!isModelsLoaded) return;
+        
+        // Check webcam stream is active
+        if (videoEl.srcObject === null) {
+            alert('Mengakses kamera Anda...');
             return;
         }
 
-        employeeSelector.disabled = true;
-        startBtn.disabled = true;
-        
         registrationState = 'scanning_front';
+        startBtn.disabled = true;
+        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        
         markStepActive(1);
         progressBar.style.width = '10%';
         progressText.innerText = 'Tahap 1/3 (Wajah Depan)';
-        
-        if (instructionOverlay) {
-            instructionOverlay.classList.remove('hidden');
-        }
+        updateInstruction('face', 'Langkah 1: Front Face', 'Hadapkan wajah ke depan and lihat kamera.');
     }
 
     function resetScan() {
-        errorOverlay.classList.add('opacity-0', 'pointer-events-none');
-        document.getElementById('face-embedding').value = '';
-        previewContainer.innerHTML = `<span class="material-symbols-outlined text-outline text-[48px]">account_box</span>`;
-        
-        registrationState = 'idle';
+        // Reset descriptors
         frontDescriptor = null;
         leftDescriptor = null;
         rightDescriptor = null;
         
-        progressBar.style.width = '10%';
-        progressText.innerText = 'Siap Memindai';
+        // Reset state
+        registrationState = 'idle';
+        isProcessing = false;
         
-        markStepInactive(1);
-        markStepInactive(2);
-        markStepInactive(3);
+        // Hide errors
+        errorOverlay.classList.add('opacity-0', 'pointer-events-none');
         
-        if (instructionOverlay) {
-            instructionOverlay.classList.add('hidden');
+        // Reset UI steps indicators
+        for (let i = 1; i <= 3; i++) {
+            const stepEl = document.getElementById(`step-${i}`);
+            stepEl.className = "flex items-start gap-sm p-sm rounded-lg opacity-50";
+            const icon = document.getElementById(`icon-${i}`);
+            icon.classList.remove('text-primary', 'text-tertiary');
+            icon.classList.add('text-outline');
+            
+            // Set standard icon labels
+            if (i === 1) icon.innerText = 'center_focus_strong';
+            if (i === 2) icon.innerText = 'arrow_back';
+            if (i === 3) icon.innerText = 'arrow_forward';
+
+            const title = document.getElementById(`title-${i}`);
+            title.classList.remove('text-primary', 'text-tertiary');
+            
+            const desc = document.getElementById(`desc-${i}`);
+            desc.innerText = 'Belum dipindai.';
+            desc.className = "text-body-sm text-secondary";
         }
         
-        startBtn.style.display = 'flex';
+        // Reset preview
+        previewContainer.innerHTML = `<span class="material-symbols-outlined text-outline text-[48px]">account_box</span>`;
+        
+        // Reset Action Bar Buttons
+        startBtn.style.display = '';
         startBtn.disabled = false;
-        startBtn.innerHTML = `<span class="material-symbols-outlined text-[18px]">camera_alt</span> Pindai Wajah`;
+        startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         
         saveBtn.disabled = true;
-        saveBtn.className = "px-xl py-sm bg-outline text-on-surface/50 rounded-lg font-label-md shadow-sm opacity-50 cursor-not-allowed";
+        saveBtn.className = "px-xl py-sm bg-outline text-on-surface/50 rounded-lg font-label-md shadow-sm opacity-50 cursor-not-allowed flex items-center justify-center w-full sm:w-auto";
         
-        employeeSelector.disabled = false;
+        // Reset Progress Bar
+        progressBar.style.width = '10%';
+        progressText.innerText = 'Siap Memindai';
+        if (instructionOverlay) instructionOverlay.classList.add('hidden');
     }
 
-    // Bootstrapping
     document.addEventListener('DOMContentLoaded', () => {
         loadModels();
         startCamera();
-
-        // Re-enable employee selector on form submit so it gets sent in the POST request
-        const formEl = document.getElementById('registration-form');
-        if (formEl) {
-            formEl.addEventListener('submit', () => {
-                employeeSelector.disabled = false;
-            });
-        }
     });
 </script>
 </body>

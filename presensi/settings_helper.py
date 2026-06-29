@@ -11,6 +11,7 @@ DEFAULT_SETTINGS = {
     'verification_method': 'face_gps'
 }
 
+
 def load_system_settings():
     if not os.path.exists(SETTINGS_FILE):
         return DEFAULT_SETTINGS.copy()
@@ -27,6 +28,7 @@ def load_system_settings():
             return settings_dict
     except Exception:
         return DEFAULT_SETTINGS.copy()
+
 
 def save_system_settings(latitude, longitude, radius, verification_method):
     try:

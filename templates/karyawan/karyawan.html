@@ -4,6 +4,7 @@
 <html class="light" lang="id"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Manajemen Karyawan | Attendance Pro</title>
 <script src="{% static 'js/tailwind.js' %}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -120,7 +121,7 @@
 <!-- TopNavBar (Shared Component) -->
 {% include "components/navbar.html" %}
 <!-- Main Content Canvas -->
-<main class="ml-[260px] pt-24 px-md md:px-lg pb-xl min-h-screen">
+<main class="ml-[260px] pt-24 px-sm md:px-md lg:px-lg pb-xl min-h-screen">
 <!-- Header Section -->
 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-md mb-lg">
 <div>
@@ -179,21 +180,21 @@
 <table class="w-full text-left">
 <thead>
 <tr class="bg-surface-container border-b border-outline-variant/50">
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant text-center w-12">NO.</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">KARYAWAN</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">ID KARYAWAN</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">DEPARTEMEN</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">JABATAN</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">ROLE</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant">STATUS</th>
-<th class="px-md py-4 text-label-md text-on-secondary-fixed-variant text-right pr-6">AKSI</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant text-center w-12">NO.</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">KARYAWAN</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ID KARYAWAN</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">DEPARTEMEN</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">JABATAN</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ROLE</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">STATUS</th>
+<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant text-right pr-6">AKSI</th>
 </tr>
 </thead>
 <tbody class="divide-y divide-outline-variant/30">
 {% for emp in employees %}
 <tr class="employee-row hover:bg-surface-container-low transition-colors group" data-dept="{{ emp.division }}" data-status="{% if emp.user.is_active %}aktif{% else %}non-aktif{% endif %}">
-<td class="px-md py-4 text-center font-label-md text-outline">{{ forloop.counter }}</td>
-<td class="px-md py-4">
+<td class="px-sm py-2.5 md:px-md md:py-4 text-center font-label-md text-outline">{{ forloop.counter }}</td>
+<td class="px-sm py-2.5 md:px-md md:py-4">
 <div class="flex items-center gap-3">
 {% if emp.profile_image %}
 <img src="{{ emp.profile_image }}" class="w-10 h-10 rounded-full object-cover border-2 border-primary/20 shadow-sm">
@@ -206,31 +207,36 @@
 </div>
 </div>
 </td>
-<td class="px-md py-4 text-body-sm text-on-surface-variant">{{ emp.employee_id }}</td>
-<td class="px-md py-4 text-body-sm text-on-surface">{{ emp.division }}</td>
-<td class="px-md py-4 text-body-sm text-on-surface-variant">{{ emp.position }}</td>
-<td class="px-md py-4 text-body-sm text-on-surface font-semibold">
+<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.employee_id }}</td>
+<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">{{ emp.division }}</td>
+<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.position }}</td>
+<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface font-semibold">
     {% if emp.user.role == 'admin' %}
         <span class="text-tertiary-container">HRD / Admin</span>
     {% else %}
         <span class="text-secondary">Karyawan</span>
     {% endif %}
 </td>
-<td class="px-md py-4">
-{% if emp.user.is_active %}
+<td class="px-sm py-2.5 md:px-md md:py-4">
+{% if emp.is_validated %}
 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
 <span class="w-1.5 h-1.5 rounded-full bg-primary mr-1.5"></span>
-                                Aktif
+                                Tervalidasi
                             </span>
 {% else %}
-<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-outline-variant/30 text-on-surface-variant">
-<span class="w-1.5 h-1.5 rounded-full bg-outline mr-1.5"></span>
-                                Non-Aktif
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-700 animate-pulse">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                Pending Validasi
                             </span>
 {% endif %}
 </td>
-<td class="px-md py-4 text-right pr-6">
+<td class="px-sm py-2.5 md:px-md md:py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
+{% if not emp.is_validated %}
+<button onclick="openValidateModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email|default:'' }}', '{{ emp.employee_id }}', '{{ emp.division }}', '{{ emp.position }}', '{{ emp.profile_image|default:'' }}')" class="p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all" title="Validasi Wajah & Profil Karyawan">
+<span class="material-symbols-outlined">how_to_reg</span>
+</button>
+{% endif %}
 <button data-id="{{ emp.id }}" data-fullname="{{ emp.fullname }}" data-email="{{ emp.user.email|default:'' }}" data-division="{{ emp.division }}" data-position="{{ emp.position }}" data-profile-image="{{ emp.profile_image|default:'' }}" class="edit-employee-btn p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
 <span class="material-symbols-outlined">edit</span>
 </button>
@@ -251,7 +257,7 @@
 </main>
 <!-- Edit Employee Modal (Quick Action Overlay) -->
 <div id="edit-employee-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
-    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-md md:p-lg w-full max-w-lg shadow-2xl transform scale-95 transition-all duration-300" id="edit-modal-content">
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-md md:p-lg w-full max-w-lg shadow-2xl transform scale-95 transition-all duration-300 mx-4" id="edit-modal-content">
         <div class="flex justify-between items-center mb-md border-b border-outline-variant pb-sm">
             <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm font-bold">
                 <span class="material-symbols-outlined text-primary text-[28px]">edit_note</span>
@@ -320,6 +326,69 @@
     <input type="hidden" name="id" id="delete-emp-id">
 </form>
 
+<!-- Hidden Validation Form for Quick Actions -->
+<form id="validate-employee-form" method="POST" action="{% url 'karyawan' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="validate">
+    <input type="hidden" name="id" id="validate-emp-id">
+</form>
+
+<!-- Validate Employee Modal (Validation Preview Overlay) -->
+<div id="validate-employee-modal" class="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-md md:p-lg w-full max-w-2xl shadow-2xl transform scale-95 transition-all duration-300 mx-4" id="validate-modal-content">
+        <div class="flex justify-between items-center mb-md border-b border-outline-variant pb-sm">
+            <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm font-bold">
+                <span class="material-symbols-outlined text-primary text-[28px]">how_to_reg</span>
+                Validasi & Persetujuan Karyawan
+            </h3>
+            <button onclick="closeValidateModal()" class="material-symbols-outlined text-secondary hover:text-primary transition-colors">close</button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-md items-start">
+            <!-- Left Side: Face/Profile Image -->
+            <div class="md:col-span-5 flex flex-col items-center">
+                <div class="w-full aspect-square bg-surface-container rounded-xl overflow-hidden border border-outline-variant shadow-sm flex items-center justify-center" id="validate-photo-preview">
+                    <span class="material-symbols-outlined text-[64px] text-outline">account_box</span>
+                </div>
+                <p class="text-label-sm text-secondary mt-sm text-center">Foto wajah / profil karyawan terdaftar</p>
+            </div>
+            
+            <!-- Right Side: Employee Details -->
+            <div class="md:col-span-7 space-y-sm text-left">
+                <div class="bg-surface-container-low p-sm rounded-xl space-y-xs">
+                    <p class="font-label-sm text-secondary uppercase tracking-wider text-[10px] font-bold">Nama Lengkap</p>
+                    <p class="font-body-md font-bold text-on-surface text-base" id="validate-fullname">-</p>
+                </div>
+                <div class="bg-surface-container-low p-sm rounded-xl space-y-xs">
+                    <p class="font-label-sm text-secondary uppercase tracking-wider text-[10px] font-bold">ID Karyawan / NIP</p>
+                    <p class="font-body-md font-bold text-primary text-base" id="validate-employee-id">-</p>
+                </div>
+                <div class="bg-surface-container-low p-sm rounded-xl space-y-xs">
+                    <p class="font-label-sm text-secondary uppercase tracking-wider text-[10px] font-bold">Email</p>
+                    <p class="font-body-sm text-on-surface-variant font-medium" id="validate-email">-</p>
+                </div>
+                <div class="grid grid-cols-2 gap-sm">
+                    <div class="bg-surface-container-low p-sm rounded-xl space-y-xs">
+                        <p class="font-label-sm text-secondary uppercase tracking-wider text-[10px] font-bold">Departemen</p>
+                        <p class="font-body-sm text-on-surface font-semibold" id="validate-division">-</p>
+                    </div>
+                    <div class="bg-surface-container-low p-sm rounded-xl space-y-xs">
+                        <p class="font-label-sm text-secondary uppercase tracking-wider text-[10px] font-bold">Jabatan</p>
+                        <p class="font-body-sm text-on-surface font-semibold" id="validate-position">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-md border-t border-outline-variant/30 flex gap-sm justify-end items-center mt-md">
+            <button type="button" onclick="closeValidateModal()" class="px-md py-sm border border-outline text-secondary rounded-lg font-label-md hover:bg-surface-container transition-all">Batal</button>
+            <button type="button" onclick="submitValidateForm()" class="px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm hover:bg-primary-container transition-all font-bold flex items-center gap-1">
+                <span class="material-symbols-outlined text-[20px]">verified</span> Validasi & Setujui
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
     const editModal = document.getElementById('edit-employee-modal');
     const modalContent = document.getElementById('edit-modal-content');
@@ -359,6 +428,39 @@
             document.getElementById('delete-emp-id').value = id;
             document.getElementById('delete-employee-form').submit();
         }
+    }
+
+    const validateModal = document.getElementById('validate-employee-modal');
+    const validateModalContent = document.getElementById('validate-modal-content');
+    
+    function openValidateModal(id, fullname, email, employeeId, division, position, photoBase64) {
+        document.getElementById('validate-emp-id').value = id;
+        document.getElementById('validate-fullname').textContent = fullname;
+        document.getElementById('validate-email').textContent = email;
+        document.getElementById('validate-employee-id').textContent = employeeId;
+        document.getElementById('validate-division').textContent = division;
+        document.getElementById('validate-position').textContent = position;
+        
+        const photoPreview = document.getElementById('validate-photo-preview');
+        if (photoBase64 && photoBase64 !== 'None' && photoBase64 !== '') {
+            photoPreview.innerHTML = `<img src="${photoBase64}" class="w-full h-full object-cover">`;
+        } else {
+            photoPreview.innerHTML = `<div class="w-full h-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[48px]">${fullname.charAt(0)}</div>`;
+        }
+        
+        validateModal.classList.remove('opacity-0', 'pointer-events-none');
+        validateModalContent.classList.remove('scale-95');
+        validateModalContent.classList.add('scale-100');
+    }
+    
+    function closeValidateModal() {
+        validateModal.classList.add('opacity-0', 'pointer-events-none');
+        validateModalContent.classList.remove('scale-100');
+        validateModalContent.classList.add('scale-95');
+    }
+    
+    function submitValidateForm() {
+        document.getElementById('validate-employee-form').submit();
     }
     
     // File input Base64 reader for edit profile photo

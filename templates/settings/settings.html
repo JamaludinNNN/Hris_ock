@@ -7,6 +7,8 @@
 <script src="{% static 'js/tailwind.js' %}"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
         body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined {
@@ -118,7 +120,7 @@
     {% include "components/navbar.html" %}
 
     <!-- Page Content -->
-    <section class="mt-16 p-md lg:p-lg space-y-lg max-w-container-max mx-auto w-full">
+    <section class="mt-16 p-sm md:p-md lg:p-lg space-y-lg max-w-container-max mx-auto w-full">
         <!-- Headline Section -->
         <div class="flex flex-col md:flex-row md:items-end justify-between gap-md">
             <div>
@@ -144,7 +146,7 @@
                     <h3 class="font-headline-md text-body-lg font-bold text-on-surface">Konfigurasi GPS Geofencing</h3>
                 </div>
                 
-                <form method="POST" action="{% url 'settings' %}" class="space-y-md">
+                <form id="global-config-form" method="POST" action="{% url 'settings' %}" class="space-y-md">
                     {% csrf_token %}
                     <div>
                         <label class="block font-label-md text-on-surface-variant mb-xs">Latitude Kantor Pusat</label>
@@ -153,6 +155,12 @@
                     <div>
                         <label class="block font-label-md text-on-surface-variant mb-xs">Longitude Kantor Pusat</label>
                         <input type="text" name="longitude" value="{{ longitude }}" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                    </div>
+                    <div class="flex justify-end mt-xs">
+                        <button type="button" id="get-current-location-btn" class="flex items-center gap-xs text-xs font-semibold text-primary hover:text-primary-container transition-all active:scale-95">
+                            <span class="material-symbols-outlined text-[16px]">my_location</span>
+                            Gunakan Lokasi Saya Saat Ini
+                        </button>
                     </div>
                     <div>
                         <label class="block font-label-md text-on-surface-variant mb-xs">Radius Absensi Valid (meter)</label>
@@ -193,13 +201,10 @@
                     </p>
                 </div>
 
-                <!-- Simulated Live Zone Health -->
-                <div class="p-md bg-tertiary/5 rounded-xl border border-tertiary/10 mt-md">
-                    <p class="font-label-sm text-tertiary mb-xs">Status Lingkungan Geofence</p>
-                    <div class="flex items-center gap-xs">
-                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <p class="text-body-sm text-on-surface-variant font-medium">Layanan Biometric Core & GPS API aktif dan stabil</p>
-                    </div>
+                <!-- Interactive Leaflet Map for geofencing center selection -->
+                <div class="space-y-xs mt-md">
+                    <p class="font-label-sm text-secondary font-semibold">Pilih Lokasi Kantor Pusat (Klik Peta / Geser Marker):</p>
+                    <div id="settings-map" class="w-full h-[220px] rounded-lg border border-outline-variant shadow-sm z-0"></div>
                 </div>
             </div>
         </div>
@@ -253,26 +258,25 @@
                     <span>{{ error }}</span>
                 </div>
                 {% endif %}
-
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead>
                             <tr class="bg-surface-container border-b border-outline-variant/50">
-                                <th class="px-md py-sm font-label-md text-secondary">Nama Cabang</th>
-                                <th class="px-md py-sm font-label-md text-secondary">Latitude</th>
-                                <th class="px-md py-sm font-label-md text-secondary">Longitude</th>
-                                <th class="px-md py-sm font-label-md text-secondary">Radius</th>
-                                <th class="px-md py-sm font-label-md text-secondary text-right">Aksi</th>
+                                <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Nama Cabang</th>
+                                <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Latitude</th>
+                                <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Longitude</th>
+                                <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Radius</th>
+                                <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-outline-variant/30">
                             {% for branch in branches %}
                             <tr class="hover:bg-surface-container transition-colors">
-                                <td class="px-md py-md font-body-sm font-bold text-on-surface">{{ branch.name }}</td>
-                                <td class="px-md py-md font-body-sm text-secondary">{{ branch.latitude }}</td>
-                                <td class="px-md py-md font-body-sm text-secondary">{{ branch.longitude }}</td>
-                                <td class="px-md py-md font-body-sm text-secondary">{{ branch.radius }} m</td>
-                                <td class="px-md py-md text-right">
+                                <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm font-bold text-on-surface">{{ branch.name }}</td>
+                                <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.latitude }}</td>
+                                <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.longitude }}</td>
+                                <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.radius }} m</td>
+                                <td class="px-sm py-2.5 md:px-md md:py-4 text-right">
                                     <form method="POST" action="{% url 'settings' %}" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus cabang {{ branch.name }}?')">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_branch">
@@ -301,6 +305,104 @@
         el.addEventListener('mousedown', () => el.style.transform = 'scale(0.95)');
         el.addEventListener('mouseup', () => el.style.transform = 'scale(1)');
         el.addEventListener('mouseleave', () => el.style.transform = 'scale(1)');
+    });
+
+    // Initialize Interactive Leaflet Map
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('global-config-form');
+        if (!form) return;
+        
+        const latInput = form.querySelector('input[name="latitude"]');
+        const lonInput = form.querySelector('input[name="longitude"]');
+        const radInput = form.querySelector('input[name="radius"]');
+        
+        const initialLat = parseFloat(latInput.value) || -6.2088;
+        const initialLon = parseFloat(lonInput.value) || 106.8456;
+        const initialRad = parseInt(radInput.value) || 150;
+        
+        const map = L.map('settings-map').setView([initialLat, initialLon], 16);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        
+        const marker = L.marker([initialLat, initialLon], {
+            draggable: true
+        }).addTo(map);
+        
+        const circle = L.circle([initialLat, initialLon], {
+            color: '#0c56d0',
+            fillColor: '#0c56d0',
+            fillOpacity: 0.15,
+            radius: initialRad
+        }).addTo(map);
+        
+        function updateCoords(lat, lng) {
+            latInput.value = lat;
+            lonInput.value = lng;
+            marker.setLatLng([lat, lng]);
+            circle.setLatLng([lat, lng]);
+        }
+        
+        marker.on('dragend', (e) => {
+            const pos = marker.getLatLng();
+            updateCoords(pos.lat, pos.lng);
+        });
+        
+        map.on('click', (e) => {
+            updateCoords(e.latlng.lat, e.latlng.lng);
+        });
+        
+        const syncInputsToMap = () => {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lonInput.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                marker.setLatLng([lat, lng]);
+                circle.setLatLng([lat, lng]);
+                map.setView([lat, lng], map.getZoom());
+            }
+        };
+        
+        latInput.addEventListener('change', syncInputsToMap);
+        lonInput.addEventListener('change', syncInputsToMap);
+        
+        radInput.addEventListener('input', () => {
+            const rad = parseInt(radInput.value);
+            if (!isNaN(rad)) {
+                circle.setRadius(rad);
+            }
+        });
+        
+        const getLocBtn = document.getElementById('get-current-location-btn');
+        if (getLocBtn) {
+            getLocBtn.addEventListener('click', () => {
+                if (navigator.geolocation) {
+                    getLocBtn.disabled = true;
+                    getLocBtn.innerText = "Mengambil Lokasi...";
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            updateCoords(lat, lng);
+                            map.setView([lat, lng], 16);
+                            getLocBtn.disabled = false;
+                            getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">my_location</span> Gunakan Lokasi Saya Saat Ini`;
+                        },
+                        (err) => {
+                            alert("Gagal mendeteksi lokasi: " + err.message);
+                            getLocBtn.disabled = false;
+                            getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">my_location</span> Gunakan Lokasi Saya Saat Ini`;
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    alert("Browser Anda tidak mendukung Geolocation.");
+                }
+            });
+        }
+        
+        setTimeout(() => map.invalidateSize(), 300);
     });
 </script>
 </body>

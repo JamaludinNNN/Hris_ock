@@ -10,6 +10,8 @@ urlpatterns = [
     path('laporan/', views.laporan, name='laporan'),
     path('settings/', views.settings, name='settings'),
     path('login/', views.login_view, name='login'),
+    path('register/', views.register_view, name='register'),
+    path('registrasi-wajah/', views.registrasi_wajah, name='registrasi_wajah'),
     path('logout/', views.logout_view, name='logout'),
     path('profile/update/', views.update_profile, name='update_profile'),
 ]

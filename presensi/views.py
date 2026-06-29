@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Employee, Attendance, Branch
+from .models import Employee, Attendance, Branch, FaceData
 from django.contrib.auth import get_user_model
 from .settings_helper import load_system_settings, save_system_settings
 import random
@@ -11,6 +11,20 @@ from django.utils import timezone
 from datetime import datetime
 
 User = get_user_model()
+
+
+def log_security_event(username, employee_id, event_type, details):
+    import os
+    from django.conf import settings as django_settings
+    log_file = os.path.join(django_settings.BASE_DIR, 'security_audit.log')
+    timestamp = timezone.localtime(timezone.now()).strftime('%Y-%m-%d %H:%M:%S')
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write(
+            f"[{timestamp}] User: {username} | "
+            f"Emp: {employee_id} | Event: {event_type} | "
+            f"Details: {details}\n"
+        )
+
 
 def is_hrd(user):
     return user.is_authenticated and (getattr(user, 'role', 'karyawan') == 'admin' or user.is_superuser)
@@ -60,6 +74,21 @@ def presensi_view(request):
     sys_settings = load_system_settings()
         
     if request.method == 'POST':
+        if not employee.is_validated:
+            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            branches = Branch.objects.all().order_by('name')
+            return render(request, 'presensi/presensi.html', {
+                'history': history,
+                'has_face_data': has_face_data,
+                'is_validated': False,
+                'error': 'Gagal presensi: Akun Anda belum divalidasi oleh Admin.',
+                'office_lat': sys_settings['latitude'],
+                'office_lon': sys_settings['longitude'],
+                'geofence_radius': sys_settings['radius'],
+                'verification_method': sys_settings['verification_method'],
+                'branches': branches,
+            })
+
         action_type = request.POST.get('type')
         branch_id = request.POST.get('branch_id')
         if not action_type or action_type not in ['in', 'out']:
@@ -134,20 +163,6 @@ def presensi_view(request):
                 'branches': branches,
             })
 
-        # 2. GPS Accuracy Validation (< 30 meters)
-        if gps_accuracy is not None and gps_accuracy > 30.0:
-            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
-            branches = Branch.objects.all().order_by('name')
-            return render(request, 'presensi/presensi.html', {
-                'history': history,
-                'has_face_data': has_face_data,
-                'error': f'Gagal presensi: Akurasi GPS kurang memadai ({gps_accuracy:.1f} meter). Harus di bawah 30 meter.',
-                'office_lat': target_lat,
-                'office_lon': target_lon,
-                'geofence_radius': target_radius,
-                'verification_method': sys_settings['verification_method'],
-                'branches': branches,
-            })
 
         # 3. Liveness Validation (face_gps and face_only)
         if sys_settings['verification_method'] in ['face_gps', 'face_only']:
@@ -269,6 +284,16 @@ def presensi_view(request):
             else:
                 status = 'late'
             
+        if gps_accuracy is not None and gps_accuracy > 30.0:
+            dist_str = f"{distance:.1f}m" if distance is not None else "N/A"
+            log_security_event(
+                request.user.username,
+                employee.id,
+                "POOR_GPS_ACCURACY_ALLOWED",
+                f"GPS accuracy poor ({gps_accuracy:.1f} meters) but allowed. "
+                f"Distance: {dist_str}, Target Radius: {target_radius}m."
+            )
+
         # Create Attendance with Audit Logs
         Attendance.objects.create(
             employee=employee,
@@ -315,6 +340,7 @@ def presensi_view(request):
     return render(request, 'presensi/presensi.html', {
         'history': history,
         'has_face_data': has_face_data,
+        'is_validated': employee.is_validated,
         'work_duration_str': work_duration_str,
         'work_status': work_status,
         'check_in_today': check_in_today,
@@ -334,16 +360,19 @@ def registrasi(request):
         embedding = request.POST.get('embedding', '')
         if emp_id:
             employee = Employee.objects.get(id=emp_id)
-            from .models import FaceData
             FaceData.objects.update_or_create(
                 employee=employee,
                 defaults={'embedding': embedding}
             )
+            face_image = request.POST.get('face_image_base64', '')
+            if face_image:
+                employee.profile_image = face_image
+                employee.save()
             return redirect('karyawan')
     employees = Employee.objects.all()
     registered_faces = []
     for emp in employees:
-        if hasattr(emp, 'face_data') and emp.face_data:
+        if hasattr(emp, 'face_data'):
             registered_faces.append({
                 'id': str(emp.id),
                 'name': emp.fullname,
@@ -393,6 +422,15 @@ def karyawan(request):
                         user.email = new_email
                         user.username = new_email
                         user.save()
+            except Employee.DoesNotExist:
+                pass
+            return redirect('karyawan')
+
+        elif action == 'validate':
+            try:
+                emp = Employee.objects.get(id=emp_id)
+                emp.is_validated = True
+                emp.save()
             except Employee.DoesNotExist:
                 pass
             return redirect('karyawan')
@@ -596,3 +634,94 @@ def update_profile(request):
         employee.save()
         
     return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+
+
+def register_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+        
+    if request.method == 'POST':
+        fullname = request.POST.get('fullname')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        employee_id = request.POST.get('employee_id')
+        division = request.POST.get('division')
+        position = request.POST.get('position')
+        profile_image = request.POST.get('profile_image_base64', '')
+        
+        # Check if email/username already exists
+        if User.objects.filter(email__iexact=email).exists() or User.objects.filter(username__iexact=email).exists():
+            return render(request, 'auth/register.html', {'error': 'Email / Username sudah terdaftar.'})
+            
+        if Employee.objects.filter(employee_id=employee_id).exists():
+            return render(request, 'auth/register.html', {'error': 'ID Karyawan sudah terdaftar.'})
+            
+        try:
+            # Create user
+            user = User.objects.create_user(username=email, email=email, password=password)
+            user.role = 'karyawan'
+            user.save()
+            
+            # Create Employee profile
+            Employee.objects.create(
+                user=user,
+                employee_id=employee_id,
+                fullname=fullname,
+                division=division,
+                position=position,
+                profile_image=profile_image,
+                is_validated=False
+            )
+            
+            # Authenticate and login
+            authenticated_user = authenticate(request, username=email, password=password)
+            if authenticated_user:
+                login(request, authenticated_user)
+            return redirect('presensi')
+            
+        except Exception as e:
+            return render(request, 'auth/register.html', {'error': f'Gagal mendaftar: {str(e)}'})
+            
+    return render(request, 'auth/register.html')
+
+
+@login_required(login_url='login')
+def registrasi_wajah(request):
+    if not hasattr(request.user, 'employee_profile'):
+        return render(request, 'presensi/presensi.html', {'error': 'Profil karyawan tidak ditemukan.'})
+        
+    employee = request.user.employee_profile
+    
+    if request.method == 'POST':
+        embedding = request.POST.get('embedding', '')
+        if embedding:
+            # Update or create FaceData
+            FaceData.objects.update_or_create(
+                employee=employee,
+                defaults={'embedding': embedding}
+            )
+            face_image = request.POST.get('face_image_base64', '')
+            if face_image:
+                employee.profile_image = face_image
+            # Reset validation status to False when they update their face biometric!
+            employee.is_validated = False
+            employee.save()
+            return redirect('presensi')
+            
+    # For GET, render registrasi_wajah.html template
+    # Preload registered faces json for duplication check
+    employees = Employee.objects.all()
+    registered_faces = []
+    for emp in employees:
+        if hasattr(emp, 'face_data'):
+            registered_faces.append({
+                'id': str(emp.id),
+                'name': emp.fullname,
+                'image': emp.face_data.embedding
+            })
+    registered_faces_json = json.dumps(registered_faces)
+    
+    return render(request, 'registrasi/registrasi_wajah.html', {
+        'employee': employee,
+        'registered_faces_json': registered_faces_json
+    })

@@ -211,7 +211,7 @@
                     </div>
 
                     <!-- Refined Action Buttons -->
-                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col gap-sm sm:gap-md w-full">
+                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col gap-sm sm:gap-md w-full" data-office-lat="{{ office_lat|escapejs }}" data-office-lon="{{ office_lon|escapejs }}" data-geofence-radius="{{ geofence_radius|escapejs }}" data-verification-method="{{ verification_method|escapejs }}">
                         {% csrf_token %}
                         <input type="hidden" name="latitude" id="form-latitude">
                         <input type="hidden" name="longitude" id="form-longitude">
@@ -237,23 +237,52 @@
                         </div>
                         
                         <div class="flex flex-col sm:flex-row gap-sm sm:gap-md w-full">
-                            <button type="submit" name="type" value="in" {% if not has_face_data %}disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-surface-container text-on-surface font-headline-md py-md sm:py-lg rounded-xl shadow hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
+                            {% if not has_face_data %}
+                            <button type="submit" name="type" value="in" disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md">
                                 <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
                                 Presensi Masuk
                             </button>
-                            <button type="submit" name="type" value="out" {% if not has_face_data %}disabled class="flex-1 bg-primary/50 text-on-primary/50 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md"{% else %}class="flex-1 bg-primary text-on-primary font-headline-md py-md sm:py-lg rounded-xl shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md"{% endif %}>
+                            <button type="submit" name="type" value="out" disabled class="flex-1 bg-primary/50 text-on-primary/50 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md">
                                 <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
                                 Presensi Keluar
                             </button>
+                            {% elif not is_validated %}
+                            <button type="submit" name="type" value="in" disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md">
+                                <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
+                                Presensi Masuk
+                            </button>
+                            <button type="submit" name="type" value="out" disabled class="flex-1 bg-primary/50 text-on-primary/50 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md">
+                                <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
+                                Presensi Keluar
+                            </button>
+                            {% else %}
+                            <button type="submit" name="type" value="in" class="flex-1 bg-surface-container text-on-surface font-headline-md py-md sm:py-lg rounded-xl shadow hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md">
+                                <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
+                                Presensi Masuk
+                            </button>
+                            <button type="submit" name="type" value="out" class="flex-1 bg-primary text-on-primary font-headline-md py-md sm:py-lg rounded-xl shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5 transition-all active:scale-[0.99] flex items-center justify-center gap-md">
+                                <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
+                                Presensi Keluar
+                            </button>
+                            {% endif %}
                         </div>
                     </form>
 
                     {% if not has_face_data %}
                     <div class="mt-md bg-error/10 border border-error/20 p-md rounded-xl text-error font-label-md flex items-center gap-sm">
                         <span class="material-symbols-outlined text-[32px]">warning</span>
-                        <div>
+                        <div class="flex-1">
                             <p class="font-bold text-sm">Biometrik Wajah Belum Terdaftar!</p>
-                            <p class="text-[12px] text-secondary mt-xs leading-relaxed">Anda belum mendaftarkan biometrik wajah Anda ke dalam database. Harap hubungi HRD / Admin untuk mendaftarkan wajah Anda di menu <strong>Registrasi Wajah</strong> terlebih dahulu sebelum melakukan absensi.</p>
+                            <p class="text-[12px] text-secondary mt-xs leading-relaxed">Anda belum mendaftarkan biometrik wajah Anda ke dalam database. Silakan klik tombol di bawah untuk mendaftarkan wajah Anda secara mandiri terlebih dahulu.</p>
+                            <a href="{% url 'registrasi_wajah' %}" class="mt-sm inline-flex items-center gap-1.5 bg-error text-white font-bold py-1.5 px-4 rounded-lg text-xs hover:bg-error/95 transition-all shadow-sm active:scale-95"><span class="material-symbols-outlined text-[16px]">camera_alt</span> Daftarkan Wajah Mandiri</a>
+                        </div>
+                    </div>
+                    {% elif not is_validated %}
+                    <div class="mt-md bg-amber-500/10 border border-amber-500/20 p-md rounded-xl text-amber-700 font-label-md flex items-center gap-sm">
+                        <span class="material-symbols-outlined text-[32px] text-amber-600">pending_actions</span>
+                        <div>
+                            <p class="font-bold text-sm">Menunggu Validasi Admin!</p>
+                            <p class="text-[12px] text-secondary mt-xs leading-relaxed">Data biometrik wajah Anda telah terdaftar. Mohon tunggu Admin/HRD untuk melakukan verifikasi dan validasi akun Anda sebelum dapat melakukan presensi.</p>
                         </div>
                     </div>
                     {% endif %}
@@ -400,6 +429,21 @@
 <script id="registered-face-biometric" type="text/plain">{{ request.user.employee_profile.face_data.embedding|safe }}</script>
 {% endif %}
 
+<!-- Branches Data Cache -->
+<script id="branches-json" type="application/json">
+[
+    {% for branch in branches %}
+    {
+        "id": "{{ branch.id|escapejs }}",
+        "lat": {{ branch.latitude|escapejs }},
+        "lon": {{ branch.longitude|escapejs }},
+        "radius": {{ branch.radius|escapejs }},
+        "name": "{{ branch.name|escapejs }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
 <script>
     const form = document.getElementById('attendance-form');
     const buttons = form.querySelectorAll('button[type="submit"]');
@@ -419,10 +463,11 @@
     let ctx = canvasEl.getContext('2d');
     
     // Core parameters loaded dynamically from persistent system settings
-    let OFFICE_LAT = parseFloat("{{ office_lat|escapejs }}") || -6.2088;
-    let OFFICE_LON = parseFloat("{{ office_lon|escapejs }}") || 106.8456;
-    let GEOFENCE_RADIUS = parseFloat("{{ geofence_radius|escapejs }}") || 150; // meters
-    const VERIFICATION_METHOD = "{{ verification_method|escapejs }}" || "face_gps";
+    const formEl = document.getElementById('attendance-form');
+    let OFFICE_LAT = parseFloat(formEl.dataset.officeLat) || -6.2088;
+    let OFFICE_LON = parseFloat(formEl.dataset.officeLon) || 106.8456;
+    let GEOFENCE_RADIUS = parseFloat(formEl.dataset.geofenceRadius) || 150; // meters
+    const VERIFICATION_METHOD = formEl.dataset.verificationMethod || "face_gps";
     
     let userLat = null;
     let userLon = null;
@@ -431,16 +476,23 @@
     let hasGPS = false;
 
     // Dictionary of all branches for client-side lookup
-    const branchesData = {
-        {% for branch in branches %}
-        "{{ branch.id }}": {
-            lat: parseFloat("{{ branch.latitude|escapejs }}"),
-            lon: parseFloat("{{ branch.longitude|escapejs }}"),
-            radius: parseInt("{{ branch.radius|escapejs }}"),
-            name: "{{ branch.name|escapejs }}"
-        },
-        {% endfor %}
-    };
+    const branchesData = {};
+    try {
+        const branchesJsonEl = document.getElementById('branches-json');
+        if (branchesJsonEl) {
+            const branchesList = JSON.parse(branchesJsonEl.textContent);
+            branchesList.forEach(b => {
+                branchesData[b.id] = {
+                    lat: parseFloat(b.lat),
+                    lon: parseFloat(b.lon),
+                    radius: parseInt(b.radius),
+                    name: b.name
+                };
+            });
+        }
+    } catch (e) {
+        console.error("Error parsing branches data:", e);
+    }
 
     function syncOfficeCoordinatesFromSelectedBranch() {
         const select = document.getElementById('branch-select');
@@ -466,7 +518,7 @@
 
         // If we have a user position, recalculate and update the UI
         if (userLat !== null && userLon !== null && hasGPS) {
-            updatePositionUI(userLat, userLon, "Akurat");
+            updatePositionUI(userLat, userLon, currentGPSAccuracy, "Akurat");
         } else {
             // Update fallback coordinates to show the selected branch
             userLat = OFFICE_LAT;
@@ -487,7 +539,9 @@
             liveDistanceDetails.innerText = `GPS Aktif (Default) - Lokasi Anda diatur ke cabang ${branchName}.`;
             liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
         }
-    }    let lastCoords = [];
+    }
+
+    let lastCoords = [];
     let isFakeGPS = false;
     let currentGPSAccuracy = null;
 
@@ -569,20 +623,23 @@
             branchName = branchesData[select.value].name;
         }
         
+        const accuracyVal = accuracy !== null ? accuracy : (currentGPSAccuracy !== null ? currentGPSAccuracy : null);
+        const accuracyText = accuracyVal !== null ? `${accuracyVal.toFixed(1)} meter` : "Tidak tersedia";
+
         if (VERIFICATION_METHOD === 'face_only') {
             gpsGeofenceStatus.innerText = "Bebas Geofencing";
             gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-            liveDistanceDetails.innerText = `GPS Aktif - Verifikasi geofencing dilewati (Jarak: ${distance.toFixed(0)} meter dari cabang ${branchName}).`;
+            liveDistanceDetails.innerText = `GPS Aktif (Akurasi: ${accuracyText}) - Jarak Anda ke lokasi ${branchName}: ${distance.toFixed(0)} meter (Radius berlaku: ${GEOFENCE_RADIUS} meter) - Bebas Geofencing`;
             liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
         } else if (isInside) {
             gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
             gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-            liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda valid (Jarak: ${distance.toFixed(0)} meter dari cabang ${branchName}).`;
+            liveDistanceDetails.innerText = `GPS Aktif (Akurasi: ${accuracyText}) - Jarak Anda ke lokasi ${branchName}: ${distance.toFixed(0)} meter (Radius berlaku: ${GEOFENCE_RADIUS} meter) - Di dalam area`;
             liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
         } else {
             gpsGeofenceStatus.innerText = "Di Luar Radius Kantor";
             gpsGeofenceStatus.className = "font-label-md font-bold text-error";
-            liveDistanceDetails.innerText = `GPS Aktif - Lokasi presensi Anda tidak valid (Jarak: ${distance.toFixed(0)} meter dari cabang ${branchName}).`;
+            liveDistanceDetails.innerText = `GPS Aktif (Akurasi: ${accuracyText}) - Jarak Anda ke lokasi ${branchName}: ${distance.toFixed(0)} meter (Radius berlaku: ${GEOFENCE_RADIUS} meter) - Di luar area`;
             liveDistanceDetails.className = "font-body-sm text-error font-bold mt-1";
         }
     }
@@ -682,7 +739,14 @@
         
         try {
             const arr = JSON.parse(rawDescriptor);
-            registeredDescriptor = new Float32Array(arr);
+            // Handle multi-descriptor format (nested array from 5-step registration)
+            if (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0])) {
+                // Use the first descriptor (front-facing) for matching
+                registeredDescriptor = new Float32Array(arr[0]);
+            } else {
+                // Legacy single descriptor format
+                registeredDescriptor = new Float32Array(arr);
+            }
             faceMatchStatus.innerText = "Terotentikasi";
         } catch (err) {
             console.error("Error loading Float32Array descriptor:", err);
@@ -699,8 +763,8 @@
         document.getElementById('form-longitude').value = userLon;
         liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
         gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
-        gpsGeofenceStatus.innerText = "Mengunci Lokasi...";
-        gpsGeofenceStatus.className = "font-label-md font-bold text-outline";
+        gpsGeofenceStatus.innerText = "Sedang memperoleh lokasi GPS...";
+        gpsGeofenceStatus.className = "font-label-md font-bold text-outline animate-pulse";
         liveDistanceDetails.innerText = `Mendeteksi lokasi presensi Anda...`;
         liveDistanceDetails.className = "font-body-sm text-secondary mt-1";
 
@@ -712,19 +776,44 @@
         }
         
         // High accuracy enabled for mobile devices to lock on real coordinates
-        const geoOptions = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
+        const geoOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
         
-        // 1. Immediate retrieval check
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                updatePositionUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, "Akurat");
-            },
-            (err) => {
-                console.warn("High accuracy GPS lock failed, attempting fallback...", err);
-                fallbackToIPGeolocation(`Error: ${err.message}`);
-            },
-            geoOptions
-        );
+        // 1. Immediate retrieval check with 3-5 times retry if accuracy is poor (above 30m)
+        let retryCount = 0;
+        let bestPos = null;
+
+        function getGPSLocationWithRetry() {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const acc = pos.coords.accuracy;
+                    console.log(`Percobaan GPS #${retryCount + 1}: Akurasi = ${acc} meter`);
+                    
+                    if (bestPos === null || acc < bestPos.coords.accuracy) {
+                        bestPos = pos;
+                    }
+
+                    // Done if accuracy is <= 30m, or we have retried 5 times
+                    if (acc <= 30.0 || retryCount >= 4) {
+                        updatePositionUI(bestPos.coords.latitude, bestPos.coords.longitude, bestPos.coords.accuracy, "Akurat");
+                    } else {
+                        // Retry for poor accuracy above 30m
+                        retryCount++;
+                        setTimeout(getGPSLocationWithRetry, 500);
+                    }
+                },
+                (err) => {
+                    console.warn(`Percobaan GPS #${retryCount + 1} gagal:`, err);
+                    if (bestPos !== null) {
+                        updatePositionUI(bestPos.coords.latitude, bestPos.coords.longitude, bestPos.coords.accuracy, "Akurat");
+                    } else {
+                        fallbackToIPGeolocation(`Error: ${err.message}`);
+                    }
+                },
+                geoOptions
+            );
+        }
+
+        getGPSLocationWithRetry();
 
         // 2. Continuous tracking lock
         navigator.geolocation.watchPosition(
@@ -828,9 +917,7 @@
     const CHALLENGES = [
         { id: 'blink', label: 'Kedip Mata', instruction: 'Silakan kedipkan mata Anda beberapa kali.' },
         { id: 'left', label: 'Toleh Kiri', instruction: 'Silakan tolehkan kepala Anda ke arah kiri.' },
-        { id: 'right', label: 'Toleh Kanan', instruction: 'Silakan tolehkan kepala Anda ke arah kanan.' },
-        { id: 'up', label: 'Angkat Kepala', instruction: 'Silakan angkat kepala Anda (melihat ke atas).' },
-        { id: 'down', label: 'Turunkan Kepala', instruction: 'Silakan turunkan kepala Anda (melihat ke bawah).' }
+        { id: 'right', label: 'Toleh Kanan', instruction: 'Silakan tolehkan kepala Anda ke arah kanan.' }
     ];
 
     function getDistance(p1, p2) {
@@ -1078,10 +1165,9 @@
                 return;
             }
             
-            // 2. GPS Accuracy check (must be <= 30m)
+            // 2. GPS Accuracy warning (non-blocking)
             if (currentGPSAccuracy !== null && currentGPSAccuracy > 30.0) {
-                showToast(`Gagal presensi: Akurasi GPS kurang memadai (${currentGPSAccuracy.toFixed(1)} meter). Harus di bawah 30 meter.`, 'error');
-                return;
+                showToast(`Akurasi GPS saat ini ${currentGPSAccuracy.toFixed(1)} meter. Sistem akan tetap melanjutkan presensi karena Anda berada di dalam radius geofence.`, 'warning');
             }
             
             const type = btn.value;
@@ -1129,7 +1215,6 @@
         const dateString = now.toLocaleDateString('id-ID', dateOptions);
         
         document.getElementById('live-clock').textContent = timeString + ' WIB';
-        document.getElementById('live-date').textContent = dateString;
         document.getElementById('live-date').textContent = dateString;
         document.getElementById('today-date-text').textContent = dateString;
     }
