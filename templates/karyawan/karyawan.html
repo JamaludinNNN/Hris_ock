@@ -241,7 +241,7 @@
 <td class="px-sm py-2.5 md:px-md md:py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
 {% if not emp.is_validated %}
-<button onclick="openValidateModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email|default:'' }}', '{{ emp.employee_id }}', '{{ emp.division }}', '{{ emp.position }}', '{% if emp.branch %}{{ emp.branch.name|escapejs }}{% else %}Kantor Pusat{% endif %}', '{{ emp.profile_image|default:'' }}')" class="p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all" title="Validasi Wajah & Profil Karyawan">
+<button onclick="openValidateModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email|default:'' }}', '{{ emp.employee_id }}', '{{ emp.division }}', '{{ emp.position }}', '{% if emp.branch %}{{ emp.branch.name|escapejs }}{% else %}Kantor Pusat{% endif %}', '{{ emp.face_data.face_image|default:'' }}')" class="p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all" title="Validasi Wajah & Profil Karyawan">
 <span class="material-symbols-outlined">how_to_reg</span>
 </button>
 {% endif %}

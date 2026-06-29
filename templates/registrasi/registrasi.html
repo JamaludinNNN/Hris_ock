@@ -397,6 +397,13 @@
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             videoEl.srcObject = stream;
             
+            // Explicitly play video to ensure it's not paused on a blank/black frame
+            try {
+                await videoEl.play();
+            } catch (playErr) {
+                console.warn("Explicit video play was blocked or failed:", playErr);
+            }
+            
             videoEl.addEventListener('play', () => {
                 resizeCanvas();
                 runLiveFaceDetection();

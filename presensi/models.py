@@ -57,6 +57,7 @@ class FaceData(models.Model):
         related_name='face_data'
     )
     embedding = models.TextField()
+    face_image = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

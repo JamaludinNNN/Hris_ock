@@ -374,11 +374,15 @@ def registrasi(request):
     if request.method == 'POST':
         emp_id = request.POST.get('employee_id')
         embedding = request.POST.get('embedding', '')
+        face_image = request.POST.get('face_image_base64', '')
         if emp_id:
             employee = Employee.objects.get(id=emp_id)
             FaceData.objects.update_or_create(
                 employee=employee,
-                defaults={'embedding': embedding}
+                defaults={
+                    'embedding': embedding,
+                    'face_image': face_image
+                }
             )
             return redirect('karyawan')
     employees = Employee.objects.all()
@@ -739,11 +743,15 @@ def registrasi_wajah(request):
     
     if request.method == 'POST':
         embedding = request.POST.get('embedding', '')
+        face_image = request.POST.get('face_image_base64', '')
         if embedding:
             # Update or create FaceData
             FaceData.objects.update_or_create(
                 employee=employee,
-                defaults={'embedding': embedding}
+                defaults={
+                    'embedding': embedding,
+                    'face_image': face_image
+                }
             )
             # Reset validation status to False when they update their face biometric!
             employee.is_validated = False
