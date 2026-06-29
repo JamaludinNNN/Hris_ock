@@ -210,9 +210,9 @@ def presensi_view(request):
             lon = target_lon
             has_coords = False
 
-        # 5. Geofencing Validation (max radius 100 meters)
+        # 5. Geofencing Validation (max radius 100 meters) - Bypassed for Kantor Pusat (branch is None)
         distance = None
-        if sys_settings['verification_method'] in ['face_gps', 'gps_only']:
+        if branch is not None and sys_settings['verification_method'] in ['face_gps', 'gps_only']:
             if not has_coords:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
                 branches = Branch.objects.all().order_by('name')
@@ -380,10 +380,6 @@ def registrasi(request):
                 employee=employee,
                 defaults={'embedding': embedding}
             )
-            face_image = request.POST.get('face_image_base64', '')
-            if face_image:
-                employee.profile_image = face_image
-                employee.save()
             return redirect('karyawan')
     employees = Employee.objects.all()
     registered_faces = []
@@ -749,9 +745,6 @@ def registrasi_wajah(request):
                 employee=employee,
                 defaults={'embedding': embedding}
             )
-            face_image = request.POST.get('face_image_base64', '')
-            if face_image:
-                employee.profile_image = face_image
             # Reset validation status to False when they update their face biometric!
             employee.is_validated = False
             employee.save()
