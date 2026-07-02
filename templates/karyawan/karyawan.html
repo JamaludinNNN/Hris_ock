@@ -371,11 +371,7 @@
 </form>
 
 <!-- Hidden Validation Form for Quick Actions -->
-<form id="validate-employee-form" method="POST" action="{% url 'karyawan' %}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="validate">
-    <input type="hidden" name="id" id="validate-emp-id">
-</form>
+
 
 <!-- Validate Employee Modal (Validation Preview Overlay) -->
 <div id="validate-employee-modal" class="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
