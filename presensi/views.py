@@ -43,23 +43,77 @@ def dashboard(request):
     else:
         selected_date = timezone.localdate()
         
-    total_karyawan = Employee.objects.count()
-    
-    # Filter attendance records on the selected date
-    attendances_on_date = Attendance.objects.filter(timestamp__date=selected_date)
-    
-    hadir_hari_ini = attendances_on_date.filter(type='in').count()
-    terlambat = attendances_on_date.filter(status='late').count()
-    
-    recent_attendance = attendances_on_date.order_by('-timestamp')[:5]
+    has_face_data = False
+    if hasattr(request.user, 'employee_profile'):
+        has_face_data = hasattr(request.user.employee_profile, 'face_data')
 
+    is_admin = (request.user.role == 'admin' or request.user.is_superuser)
+    
     context = {
-        'total_karyawan': total_karyawan,
-        'hadir_hari_ini': hadir_hari_ini,
-        'terlambat': terlambat,
-        'recent_attendance': recent_attendance,
         'selected_date': selected_date.strftime('%Y-%m-%d'),
+        'has_face_data': has_face_data,
+        'is_admin': is_admin,
     }
+
+    if is_admin:
+        total_karyawan = Employee.objects.count()
+        attendances_on_date = Attendance.objects.filter(timestamp__date=selected_date)
+        hadir_hari_ini = attendances_on_date.filter(type='in').count()
+        terlambat = attendances_on_date.filter(status='late').count()
+        recent_attendance = attendances_on_date.order_by('-timestamp')[:5]
+        
+        context.update({
+            'total_karyawan': total_karyawan,
+            'hadir_hari_ini': hadir_hari_ini,
+            'terlambat': terlambat,
+            'recent_attendance': recent_attendance,
+        })
+    else:
+        employee = getattr(request.user, 'employee_profile', None)
+        if employee:
+            # Personal Attendance for selected date
+            personal_attendances_on_date = Attendance.objects.filter(employee=employee, timestamp__date=selected_date).order_by('timestamp')
+            jam_masuk = personal_attendances_on_date.filter(type='in').first()
+            jam_pulang = personal_attendances_on_date.filter(type='out').last()
+            
+            # Status Hari Ini
+            status_hari_ini = "Belum Presensi"
+            if jam_masuk:
+                status_hari_ini = jam_masuk.get_status_display()
+                
+            # Riwayat Presensi Saya (Recent 5)
+            personal_recent = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            
+            # Recap filter handling (Hari Ini, Minggu Ini, Bulan Ini)
+            recap_filter = request.GET.get('filter', 'today')
+            today = timezone.localdate()
+            if recap_filter == 'week':
+                start_date = today - timezone.timedelta(days=today.weekday())
+                recap_qs = Attendance.objects.filter(employee=employee, timestamp__date__gte=start_date)
+            elif recap_filter == 'month':
+                start_date = today.replace(day=1)
+                recap_qs = Attendance.objects.filter(employee=employee, timestamp__date__gte=start_date)
+            else:
+                recap_qs = Attendance.objects.filter(employee=employee, timestamp__date=today)
+                
+            recap_hadir = recap_qs.filter(type='in').count()
+            recap_terlambat = recap_qs.filter(type='in', status='late').count()
+            
+            context.update({
+                'jam_masuk': jam_masuk,
+                'jam_pulang': jam_pulang,
+                'status_hari_ini': status_hari_ini,
+                'personal_recent': personal_recent,
+                'recap_hadir': recap_hadir,
+                'recap_terlambat': recap_terlambat,
+                'recap_izin': 0, # Placeholder since we don't have leave model yet
+                'recap_sakit': 0,
+                'recap_alpha': 0,
+                'total_hari_kerja': 0, 
+                'total_kehadiran': recap_hadir,
+                'current_filter': recap_filter,
+                'employee': employee,
+            })
     return render(request, 'dashboard/index.html', context)
 
 @login_required(login_url='login')
@@ -99,6 +153,12 @@ def presensi_view(request):
             employee.save()
             
     has_face_data = hasattr(employee, 'face_data')
+    
+    # Validasi Registrasi Wajah: Redirect if no face data (except for admin/HR who don't need to register face)
+    if not has_face_data and not (request.user.role == 'admin' or request.user.is_superuser):
+        from django.contrib import messages
+        messages.warning(request, "Wajah Anda belum terdaftar. Silakan lakukan registrasi wajah terlebih dahulu.")
+        return redirect('registrasi_wajah')
     
     today = timezone.localdate()
     now = timezone.now()
@@ -847,8 +907,10 @@ def registrasi_wajah(request):
             })
     registered_faces_json = json.dumps(registered_faces)
     
+    has_face_data = hasattr(employee, 'face_data')
     return render(request, 'registrasi/registrasi_wajah.html', {
         'employee': employee,
         'registered_faces_json': registered_faces_json,
-        'debug_mode': django_settings.DEBUG
+        'debug_mode': django_settings.DEBUG,
+        'has_face_data': has_face_data
     })

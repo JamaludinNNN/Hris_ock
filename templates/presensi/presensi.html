@@ -141,7 +141,7 @@
 {% include "components/sidebar.html" %}
 
 <!-- Main Content Area -->
-<main class="ml-[260px] pt-16 min-h-screen">
+<main class="ml-0 md:ml-[260px] pt-16 min-h-screen">
     {% include "components/navbar.html" %}
 
     <!-- Page Content -->
@@ -280,7 +280,9 @@
                         <div class="flex-1">
                             <p class="font-bold text-sm">Biometrik Wajah Belum Terdaftar!</p>
                             <p class="text-[12px] text-secondary mt-xs leading-relaxed">Anda belum mendaftarkan biometrik wajah Anda ke dalam database. Silakan klik tombol di bawah untuk mendaftarkan wajah Anda secara mandiri terlebih dahulu.</p>
+                            {% if not request.user.role == 'admin' and not request.user.is_superuser %}
                             <a href="{% url 'registrasi_wajah' %}" class="mt-sm inline-flex items-center gap-1.5 bg-error text-white font-bold py-1.5 px-4 rounded-lg text-xs hover:bg-error/95 transition-all shadow-sm active:scale-95"><span class="material-symbols-outlined text-[16px]">camera_alt</span> Daftarkan Wajah Mandiri</a>
+                            {% endif %}
                         </div>
                     </div>
                     {% elif not is_validated %}
@@ -290,6 +292,25 @@
                             <p class="font-bold text-sm">Menunggu Validasi Admin!</p>
                             <p class="text-[12px] text-secondary mt-xs leading-relaxed">Data biometrik wajah Anda telah terdaftar. Mohon tunggu Admin/HRD untuk melakukan verifikasi dan validasi akun Anda sebelum dapat melakukan presensi.</p>
                         </div>
+                    </div>
+                    {% else %}
+                    <!-- Status Aktif & Perbarui Wajah -->
+                    <div class="mt-md bg-green-500/10 border border-green-500/30 p-md rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-md shadow-sm">
+                        <div class="flex items-center gap-3 text-green-600">
+                            <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-[24px]">verified_user</span>
+                            </div>
+                            <div>
+                                <p class="font-bold text-sm text-green-700">Status: Akun Aktif & Terverifikasi</p>
+                                <p class="text-[12px] text-green-700/80 mt-0.5">Anda siap untuk melakukan presensi sekarang.</p>
+                            </div>
+                        </div>
+                        {% if not request.user.role == 'admin' and not request.user.is_superuser %}
+                        <a href="{% url 'registrasi_wajah' %}" class="inline-flex items-center justify-center gap-1.5 bg-white text-green-700 border border-green-500/30 font-bold py-2 px-4 rounded-lg text-xs hover:bg-green-50 transition-all shadow-sm active:scale-95 w-full sm:w-auto">
+                            <span class="material-symbols-outlined text-[16px]">face_6</span>
+                            Daftarkan Wajah
+                        </a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -821,7 +842,7 @@
         // Restore original fetch
         window.fetch = originalFetch;
         
-        globalFaceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.45 });
+        globalFaceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.45 });
         isModelsLoaded = true;
         console.log("Model Loaded");
         // Hide the small AI loading chip
@@ -1032,7 +1053,9 @@
             try {
                 const constraints = {
                     video: {
-                        facingMode: "user"
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
                     }
                 };
                 stream = await navigator.mediaDevices.getUserMedia(constraints);

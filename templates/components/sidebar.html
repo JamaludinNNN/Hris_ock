@@ -58,27 +58,22 @@
             </a>
         {% endif %}
         
-        <!-- Daftar Wajah Mandiri (Karyawan only) -->
-        {% if not request.user.role == 'admin' and not request.user.is_superuser %}
-            {% if request.resolver_match.url_name == 'registrasi_wajah' %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'registrasi_wajah' %}">
-            {% else %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'registrasi_wajah' %}">
-            {% endif %}
-                <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
-                <span class="font-body-md text-body-md">Daftar Wajah</span>
-            </a>
-        {% endif %}
-        
         <!-- Presensi -->
-        {% if request.resolver_match.url_name == 'presensi' %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'presensi' %}">
-        {% else %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'presensi' %}">
-        {% endif %}
+        {% if not request.user.role == 'admin' and not request.user.is_superuser and has_face_data is False %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95 cursor-pointer" onclick="showFaceRegistrationWarning()">
             <span class="material-symbols-outlined" data-icon="timer">timer</span>
             <span class="font-body-md text-body-md">Presensi</span>
         </a>
+        {% else %}
+            {% if request.resolver_match.url_name == 'presensi' %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'presensi' %}">
+            {% else %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'presensi' %}">
+            {% endif %}
+                <span class="material-symbols-outlined" data-icon="timer">timer</span>
+                <span class="font-body-md text-body-md">Presensi</span>
+            </a>
+        {% endif %}
         
         <!-- Laporan -->
         {% if request.resolver_match.url_name == 'laporan' %}
@@ -113,6 +108,36 @@
 <!-- Semi-transparent mobile backdrop overlay -->
 <div class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 md:hidden" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
 
+<!-- Custom Face Registration Warning Modal -->
+<div id="face-reg-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-sm md:p-md">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeFaceRegModal()"></div>
+    <div class="relative bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="face-reg-modal-content">
+        <!-- Header Image/Icon Area -->
+        <div class="bg-amber-500/10 p-lg flex justify-center items-center relative">
+            <div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm">
+                <span class="material-symbols-outlined text-[40px] text-amber-500">face</span>
+            </div>
+        </div>
+        <!-- Body -->
+        <div class="p-lg text-center">
+            <h3 class="font-headline-md text-xl font-bold text-on-surface mb-xs">Registrasi Wajah Belum Selesai</h3>
+            <p class="font-body-md text-secondary leading-relaxed">
+                Wajah Anda belum terdaftar pada sistem. Silakan lakukan <b>Registrasi Wajah</b> terlebih dahulu agar sistem dapat mengenali Anda saat melakukan presensi.
+            </p>
+        </div>
+        <!-- Footer / Actions -->
+        <div class="p-md bg-surface-container-low flex gap-sm justify-end">
+            <button onclick="closeFaceRegModal()" class="px-md py-sm rounded-xl font-label-md text-secondary hover:bg-surface-container transition-colors focus:outline-none">
+                Batal
+            </button>
+            <a href="{% url 'registrasi_wajah' %}" class="px-lg py-sm rounded-xl font-label-md font-bold bg-primary text-white hover:bg-primary/90 transition-colors shadow-md hover:shadow-lg focus:outline-none flex items-center gap-2">
+                Daftar Sekarang <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </a>
+        </div>
+    </div>
+</div>
+
 <script>
     function toggleSidebar(open) {
         const sidebar = document.getElementById('sidebar');
@@ -126,5 +151,32 @@
                 backdrop.classList.add('hidden');
             }
         }
+    }
+
+    function showFaceRegistrationWarning() {
+        const modal = document.getElementById('face-reg-modal');
+        const content = document.getElementById('face-reg-modal-content');
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        
+        // Small delay to allow display:flex to apply before animating opacity/transform
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+    
+    function closeFaceRegModal() {
+        const modal = document.getElementById('face-reg-modal');
+        const content = document.getElementById('face-reg-modal-content');
+        
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }, 300);
     }
 </script>
