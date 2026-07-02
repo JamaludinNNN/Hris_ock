@@ -579,7 +579,7 @@
                     return;
                 }
                 
-                const faces = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.5 }))
+                const faces = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
                                              .withFaceLandmarks()
                                              .withFaceDescriptors();
                                              
@@ -700,15 +700,15 @@
         const deltaY = Math.abs(faceY - videoH / 2) / videoH;
         const sizeRatio = face.detection.box.width / videoW;
 
-        if (sizeRatio < 0.22) {
+        if (sizeRatio < 0.15) {
             updateInstruction('zoom_in', 'Wajah Terlalu Jauh', 'Wajah terlalu jauh dari kamera.');
             return;
         }
-        if (sizeRatio > 0.58) {
+        if (sizeRatio > 0.75) {
             updateInstruction('zoom_out', 'Wajah Terlalu Dekat', 'Wajah terlalu dekat.');
             return;
         }
-        if (deltaX > 0.16 || deltaY > 0.16) {
+        if (deltaX > 0.25 || deltaY > 0.25) {
             updateInstruction('center_focus_weak', 'Posisikan Wajah', 'Posisikan wajah di dalam bingkai kamera.');
             return;
         }
@@ -758,7 +758,7 @@
         if (registrationState === 'scanning_front') {
             updateInstruction('face', 'Langkah 1: Front Face', 'Hadapkan wajah ke depan dan lihat kamera.');
             
-            if (score < 0.90) {
+            if (score < 0.75) {
                 updateInstruction('warning', 'Kurang Fokus', 'Pencahayaan kurang / wajah blur, pastikan wajah Anda fokus.');
                 return;
             }
@@ -805,7 +805,7 @@
         else if (registrationState === 'scanning_left') {
             updateInstruction('arrow_back', 'Langkah 2: Left Face', 'Silakan putar wajah ke kiri sekitar 30–45 derajat.');
             
-            if (score < 0.50) {
+            if (score < 0.40) {
                 updateInstruction('warning', 'Kurang Fokus', 'Pencahayaan kurang / wajah blur, pastikan wajah Anda fokus.');
                 return;
             }
@@ -824,7 +824,7 @@
         else if (registrationState === 'scanning_right') {
             updateInstruction('arrow_forward', 'Langkah 3: Right Face', 'Silakan putar wajah ke kanan sekitar 30–45 derajat.');
             
-            if (score < 0.50) {
+            if (score < 0.40) {
                 updateInstruction('warning', 'Kurang Fokus', 'Pencahayaan kurang / wajah blur, pastikan wajah Anda fokus.');
                 return;
             }
