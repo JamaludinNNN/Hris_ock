@@ -238,12 +238,12 @@
     {% endif %}
 </td>
 <td class="px-sm py-2.5 md:px-md md:py-4">
-{% if emp.validation_status == 'APPROVED' %}
+{% if emp.face_status == 'APPROVED' %}
 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
 <span class="w-1.5 h-1.5 rounded-full bg-primary mr-1.5"></span>
                                 Tervalidasi
                             </span>
-{% elif emp.validation_status == 'PENDING' %}
+{% elif emp.face_status == 'PENDING' %}
 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-700 animate-pulse">
 <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
                                 Pending
@@ -257,7 +257,7 @@
 </td>
 <td class="px-sm py-2.5 md:px-md md:py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
-{% if emp.validation_status == 'PENDING' or emp.validation_status == 'REJECTED' %}
+{% if emp.face_status == 'PENDING' or emp.face_status == 'REJECTED' %}
 <button class="validate-employee-btn p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all"
     title="Validasi Wajah & Profil Karyawan"
     data-id="{{ emp.id }}"

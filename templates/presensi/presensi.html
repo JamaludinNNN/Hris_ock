@@ -232,7 +232,6 @@
                                 <span class="block text-xs sm:text-body-md">Memulai Autentikasi...</span>
                             </div>
                         </div>
-                        </div>
                     </div>
                 {% endif %}
                     <!-- Refined Action Buttons -->
@@ -1052,10 +1051,10 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 const isHttp = location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
                 if (isHttp) {
-                    alert("Akses Kamera Gagal: Fitur presensi wajah (kamera) membutuhkan koneksi HTTPS (atau localhost) agar dapat berjalan. Browser secara otomatis memblokir akses kamera pada koneksi HTTP biasa.");
+                    Swal.fire({icon: 'warning', text: "Akses Kamera Gagal: Fitur presensi wajah (kamera) membutuhkan koneksi HTTPS (atau localhost) agar dapat berjalan. Browser secara otomatis memblokir akses kamera pada koneksi HTTP biasa.", confirmButtonColor: '#003d9b'});
                     cameraStatusText.innerText = "Gagal mengakses kamera (Membutuhkan HTTPS).";
                 } else {
-                    alert("Akses Kamera Gagal: Browser Anda tidak mendukung API kamera.");
+                    Swal.fire({icon: 'warning', text: "Akses Kamera Gagal: Browser Anda tidak mendukung API kamera.", confirmButtonColor: '#003d9b'});
                     cameraStatusText.innerText = "Browser tidak mendukung akses kamera.";
                 }
                 
@@ -1564,7 +1563,7 @@
                 startLivenessVerification(type);
             } catch (err) {
                 console.error("Attendance Click Error:", err);
-                alert("Gagal memproses presensi: " + err.message);
+                Swal.fire({icon: 'warning', text: "Gagal memproses presensi: " + err.message, confirmButtonColor: '#003d9b'});
             }
         });
     });

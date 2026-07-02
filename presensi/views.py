@@ -99,6 +99,11 @@ def dashboard(request):
             recap_hadir = recap_qs.filter(type='in').count()
             recap_terlambat = recap_qs.filter(type='in', status='late').count()
             
+            show_approval_alert = False
+            if employee.face_status == 'APPROVED' and not request.session.get('has_seen_approval_alert', False):
+                show_approval_alert = True
+                request.session['has_seen_approval_alert'] = True
+
             context.update({
                 'jam_masuk': jam_masuk,
                 'jam_pulang': jam_pulang,
@@ -113,6 +118,7 @@ def dashboard(request):
                 'total_kehadiran': recap_hadir,
                 'current_filter': recap_filter,
                 'employee': employee,
+                'show_approval_alert': show_approval_alert,
             })
     return render(request, 'dashboard/index.html', context)
 
@@ -126,7 +132,7 @@ def presensi_view(request):
                 fullname=request.user.username.split('@')[0].capitalize(),
                 division='General',
                 position='Staff',
-                validation_status='APPROVED'
+                face_status='APPROVED'
             )
             # Refresh User object in memory to populate the employee_profile relationship cache
             from django.contrib.auth import get_user_model
@@ -836,7 +842,7 @@ def register_view(request):
                 division=division,
                 position=position,
                 profile_image=profile_image,
-                validation_status='PENDING',
+                face_status='PENDING',
                 branch=branch
             )
             
@@ -862,7 +868,7 @@ def registrasi_wajah(request):
                 fullname=request.user.username.split('@')[0].capitalize(),
                 division='General',
                 position='Staff',
-                validation_status='PENDING'
+                face_status='PENDING'
             )
             # Refresh User object in memory to populate the employee_profile relationship cache
             from django.contrib.auth import get_user_model

@@ -110,6 +110,18 @@
             },
         }
     </script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .swal2-popup {
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 16px !important;
+        }
+        .swal2-confirm, .swal2-cancel {
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+    </style>
 </head>
 <body class="bg-background text-on-background">
 
@@ -277,11 +289,11 @@
                                 <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.longitude }}</td>
                                 <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.radius }} m</td>
                                 <td class="px-sm py-2.5 md:px-md md:py-4 text-right">
-                                    <form method="POST" action="{% url 'settings' %}" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus cabang {{ branch.name }}?')">
+                                    <form method="POST" action="{% url 'settings' %}" class="inline-block" id="delete-branch-form-{{ branch.id }}">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_branch">
                                         <input type="hidden" name="branch_id" value="{{ branch.id }}">
-                                        <button type="submit" class="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors">
+                                        <button type="button" onclick="confirmDeleteBranch('{{ branch.id }}', '{{ branch.name|escapejs }}')" class="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors">
                                             <span class="material-symbols-outlined text-[20px]">delete</span>
                                         </button>
                                     </form>
@@ -347,12 +359,35 @@
         }).addTo(map);
 
         function updateCoords(lat, lng) {
-            // Simpan dengan presisi penuh, selalu pakai titik desimal
             latInput.value = lat;
             lonInput.value = lng;
             marker.setLatLng([lat, lng]);
             circle.setLatLng([lat, lng]);
             map.setView([lat, lng], Math.max(map.getZoom(), 16));
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Lokasi berhasil ditandai.',
+                confirmButtonColor: '#003d9b'
+            });
+        }
+        
+        function confirmDeleteBranch(id, name) {
+            Swal.fire({
+                title: 'Konfirmasi Hapus',
+                text: `Apakah Anda yakin ingin menghapus cabang ${name}? Tindakan ini tidak dapat dibatalkan.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#BA1A1A',
+                cancelButtonColor: '#6B7280',
+                confirmButtonText: 'Ya, Hapus Cabang',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(`delete-branch-form-${id}`).submit();
+                }
+            });
         }
 
         marker.on('dragend', (e) => {
@@ -396,12 +431,12 @@
                     location.hostname !== '127.0.0.1';
 
                 if (isHttp) {
-                    alert('Fitur "Gunakan Lokasi Saat Ini" memerlukan koneksi HTTPS.\n\nJika mengakses via HTTP, browser akan memblokir akses GPS.\nSilakan isi koordinat secara manual atau klik peta/geser marker.');
+                    Swal.fire({icon: 'warning', text: 'Fitur "Gunakan Lokasi Saat Ini" memerlukan koneksi HTTPS.\n\nJika mengakses via HTTP, browser akan memblokir akses GPS.\nSilakan isi koordinat secara manual atau klik peta/geser marker.', confirmButtonColor: '#003d9b'});
                     return;
                 }
 
                 if (!navigator.geolocation) {
-                    alert('Browser Anda tidak mendukung Geolocation API.\nSilakan isi koordinat secara manual atau klik peta/geser marker.');
+                    Swal.fire({icon: 'warning', text: 'Browser Anda tidak mendukung Geolocation API.\nSilakan isi koordinat secara manual atau klik peta/geser marker.', confirmButtonColor: '#003d9b'});
                     return;
                 }
 
@@ -435,7 +470,7 @@
                             2: 'GPS perangkat tidak tersedia.\n\nPastikan GPS/Location Services diaktifkan di pengaturan perangkat Anda.\nAtau isi koordinat dengan klik peta di bawah.',
                             3: 'Pengambilan lokasi timeout (>15 detik).\n\nSinyal GPS lemah. Coba:\n• Pindah ke tempat dengan sinyal lebih baik\n• Refresh halaman dan coba lagi\nAtau isi koordinat dengan klik peta.'
                         };
-                        alert(errMessages[err.code] || `Gagal mendeteksi lokasi: ${err.message}`);
+                        Swal.fire({icon: 'warning', text: errMessages[err.code] || `Gagal mendeteksi lokasi: ${err.message}`, confirmButtonColor: '#003d9b'});
                     },
                     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );

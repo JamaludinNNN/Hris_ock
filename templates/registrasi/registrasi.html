@@ -431,10 +431,10 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 const isHttp = location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
                 if (isHttp) {
-                    alert("Akses Kamera Gagal: Fitur pemindai wajah (kamera) membutuhkan koneksi HTTPS (atau localhost) agar dapat berjalan. Browser secara otomatis memblokir akses kamera pada koneksi HTTP biasa.");
+                    Swal.fire({icon: 'warning', text: "Akses Kamera Gagal: Fitur pemindai wajah (kamera) membutuhkan koneksi HTTPS (atau localhost) agar dapat berjalan. Browser secara otomatis memblokir akses kamera pada koneksi HTTP biasa.", confirmButtonColor: '#003d9b'});
                     statusText.innerText = "Gagal mengakses kamera (Membutuhkan HTTPS).";
                 } else {
-                    alert("Akses Kamera Gagal: Browser Anda tidak mendukung API kamera.");
+                    Swal.fire({icon: 'warning', text: "Akses Kamera Gagal: Browser Anda tidak mendukung API kamera.", confirmButtonColor: '#003d9b'});
                     statusText.innerText = "Browser tidak mendukung akses kamera.";
                 }
                 
@@ -501,7 +501,7 @@
             }
         } catch (err) {
             console.error("Camera access denied:", err);
-            alert("Harap berikan izin akses webcam agar sensor biometrik dapat mendeteksi kontur wajah.");
+            Swal.fire({icon: 'warning', text: "Harap berikan izin akses webcam agar sensor biometrik dapat mendeteksi kontur wajah.", confirmButtonColor: '#003d9b'});
             
             // Show simulation button
             if (DEBUG_MODE) {
@@ -514,7 +514,7 @@
     let isSimulationMode = false;
     document.getElementById('btn-simulate-dev').addEventListener('click', () => {
         if (!employeeSelector.value) {
-            alert("Pilih profil karyawan terlebih dahulu sebelum memulai simulasi.");
+            Swal.fire({icon: 'warning', text: "Pilih profil karyawan terlebih dahulu sebelum memulai simulasi.", confirmButtonColor: '#003d9b'});
             return;
         }
         
@@ -944,7 +944,7 @@
 
     async function startBiometricCapture() {
         if (!employeeSelector.value) {
-            alert("Pilih profil karyawan terlebih dahulu sebelum memulai pemindaian biometrik.");
+            Swal.fire({icon: 'warning', text: "Pilih profil karyawan terlebih dahulu sebelum memulai pemindaian biometrik.", confirmButtonColor: '#003d9b'});
             return;
         }
 
@@ -954,7 +954,7 @@
         }
 
         if (!videoEl.srcObject) {
-            alert('Gagal mengakses kamera Anda. Harap berikan izin akses kamera.');
+            Swal.fire({icon: 'warning', text: 'Gagal mengakses kamera Anda. Harap berikan izin akses kamera.', confirmButtonColor: '#003d9b'});
             return;
         }
 
