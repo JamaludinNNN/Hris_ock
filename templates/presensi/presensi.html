@@ -626,25 +626,18 @@
         const isFromRealGPS = source && source.includes('Akurat');
         const accuracyVal = accuracy !== null ? accuracy : (currentGPSAccuracy !== null ? currentGPSAccuracy : null);
 
-        if (isFromRealGPS && accuracyVal !== null && accuracyVal > 30.0) {
-            liveCoordsText.innerText = `${userLat.toFixed(6)}, ${userLon.toFixed(6)} (Akurasi: ${accuracyVal.toFixed(1)}m)`;
-            gpsGeofenceStatus.innerText = 'GPS Kurang Akurat';
-            gpsGeofenceStatus.className = 'font-label-md font-bold text-amber-500 animate-pulse';
-            liveDistanceDetails.innerText = 'Menunggu GPS lebih akurat.';
-            liveDistanceDetails.className = 'font-body-sm text-amber-600 font-bold mt-1';
-
-            document.getElementById('form-latitude').value = userLat;
-            document.getElementById('form-longitude').value = userLon;
-            document.getElementById('form-gps-accuracy').value = accuracyVal.toFixed(1);
-            document.getElementById('form-is-fake-gps').value = isFakeGPS ? 'true' : 'false';
-
-            gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
-            return;
+        let accuracyStatusText = "Akurasi Rendah";
+        if (accuracyVal !== null) {
+            if (accuracyVal <= 30.0) {
+                accuracyStatusText = "Sangat Akurat";
+            } else if (accuracyVal <= 100.0) {
+                accuracyStatusText = "Cukup Akurat";
+            }
         }
 
         // Update live coordinates overlay (only for real GPS source)
         if (source && source.includes('Akurat')) {
-            liveCoordsText.innerText = `${userLat.toFixed(6)}, ${userLon.toFixed(6)}`;
+            liveCoordsText.innerText = `${userLat.toFixed(6)}, ${userLon.toFixed(6)} (${accuracyStatusText})`;
         }
 
         console.log("GPS Success");
@@ -665,13 +658,21 @@
 
         // Compute distance to office
         const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
-        console.log("Distance", distance);
         const isInside = (VERIFICATION_METHOD === 'face_only') || (distance <= GEOFENCE_RADIUS);
 
         let branchName = 'kantor';
         if (selectEl && selectEl.value && branchesData[selectEl.value]) {
             branchName = branchesData[selectEl.value].name;
         }
+
+        // Output diagnostics console logs
+        console.log("GPS User:", userLat, userLon);
+        console.log("GPS Accuracy:", accuracyVal);
+        console.log("Cabang:", branchName);
+        console.log("Cabang Lat:", OFFICE_LAT);
+        console.log("Cabang Lng:", OFFICE_LON);
+        console.log("Radius:", GEOFENCE_RADIUS);
+        console.log("Distance:", distance);
 
         const accuracyText = accuracyVal !== null ? `${accuracyVal.toFixed(1)} meter` : 'Tidak tersedia';
         const sourceLabel = isFromRealGPS ? `GPS Perangkat (Akurasi: ${accuracyText})` : `IP Geo (~${accuracyText})`;
@@ -691,7 +692,7 @@
         } else {
             gpsGeofenceStatus.innerText = 'Di Luar Radius Kantor';
             gpsGeofenceStatus.className = 'font-label-md font-bold text-error';
-            liveDistanceDetails.innerText = `${sourceLabel} — Jarak ke ${branchName}: ${distance.toFixed(0)} m (Radius: ${GEOFENCE_RADIUS} m) ✗ Di luar area`;
+            liveDistanceDetails.innerText = 'Anda berada di luar radius cabang.';
             liveDistanceDetails.className = 'font-body-sm text-error font-bold mt-1';
         }
     }
@@ -1480,16 +1481,9 @@
                     return;
                 }
                 
-                // 2. GPS Accuracy validation (strictly blocking)
-                if (!isSimulationMode && currentGPSAccuracy !== null && currentGPSAccuracy > 30.0) {
-                    console.log("Attendance Failed: GPS accuracy > 30m");
-                    return;
-                }
-                
                 const type = btn.value;
                 document.getElementById('form-type').value = type;
                 
-                // 3. Geofencing check (for face_gps and gps_only)
                 const selectEl = document.getElementById('branch-select');
                 const isKantorPusat = selectEl && !selectEl.value;
                 
@@ -1502,7 +1496,7 @@
                     const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
                     if (distance > GEOFENCE_RADIUS) {
                         console.log("Attendance Failed: Outside branch geofence (" + distance.toFixed(1) + "m)");
-                        showToast(`Presensi ditolak: Anda berada di luar radius kantor (${distance.toFixed(0)} meter dari kantor).`, 'error');
+                        showToast(`Anda berada di luar radius cabang.`, 'error');
                         return;
                     }
                 }

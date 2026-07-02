@@ -105,28 +105,23 @@ def presensi_view(request):
     sys_settings = load_system_settings()
         
     if request.method == 'POST':
-        # Enforce geofencing against user's registered branch
-        branch = employee.branch
-        if branch:
-            target_lat = float(branch.latitude)
-            target_lon = float(branch.longitude)
-            target_radius = int(branch.radius)
-        else:
-            # Fallback to selected branch from dropdown or default settings if user has no branch
-            branch_id = request.POST.get('branch_id')
-            if branch_id:
-                try:
-                    branch = Branch.objects.get(id=branch_id)
-                    target_lat = float(branch.latitude)
-                    target_lon = float(branch.longitude)
-                    target_radius = int(branch.radius)
-                except (Branch.DoesNotExist, ValueError):
-                    branch = None
-            
-            if not branch:
-                target_lat = sys_settings['latitude']
-                target_lon = sys_settings['longitude']
-                target_radius = sys_settings['radius']
+        # Enforce geofencing against the branch selected in the dropdown
+        branch_id = request.POST.get('branch_id')
+        branch = None
+        if branch_id:
+            try:
+                branch = Branch.objects.get(id=branch_id)
+                target_lat = float(branch.latitude)
+                target_lon = float(branch.longitude)
+                target_radius = int(branch.radius)
+            except (Branch.DoesNotExist, ValueError):
+                pass
+        
+        if not branch:
+            # Fallback to Kantor Pusat (Bawaan) from system settings
+            target_lat = sys_settings['latitude']
+            target_lon = sys_settings['longitude']
+            target_radius = sys_settings['radius']
 
         if not employee.is_validated and not django_settings.DEBUG:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
