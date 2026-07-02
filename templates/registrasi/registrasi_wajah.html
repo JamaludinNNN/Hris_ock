@@ -1007,8 +1007,34 @@
 
         const formEl = document.getElementById('registration-form');
         if (formEl) {
-            formEl.addEventListener('submit', () => {
-                console.log("Embedding Saved");
+            formEl.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                saveBtn.disabled = true;
+                saveBtn.innerText = "Menyimpan...";
+                
+                try {
+                    const formData = new FormData(formEl);
+                    const response = await fetch(formEl.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        alert("Registrasi Wajah Berhasil\n\nData wajah Anda telah berhasil disimpan.\nRegistrasi sedang menunggu proses validasi oleh Administrator.\n\nSelama belum divalidasi Admin, Anda belum dapat melakukan Presensi.");
+                        window.location.href = "{% url 'presensi' %}";
+                    } else {
+                        alert("Gagal menyimpan data. Silakan coba lagi.");
+                        saveBtn.disabled = false;
+                        saveBtn.innerText = "Simpan Data Wajah";
+                    }
+                } catch (err) {
+                    alert("Terjadi kesalahan jaringan.");
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = "Simpan Data Wajah";
+                }
             });
         }
 

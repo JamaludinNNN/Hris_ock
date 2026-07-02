@@ -226,21 +226,26 @@
     {% endif %}
 </td>
 <td class="px-sm py-2.5 md:px-md md:py-4">
-{% if emp.is_validated %}
+{% if emp.validation_status == 'APPROVED' %}
 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
 <span class="w-1.5 h-1.5 rounded-full bg-primary mr-1.5"></span>
                                 Tervalidasi
                             </span>
-{% else %}
+{% elif emp.validation_status == 'PENDING' %}
 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-700 animate-pulse">
 <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
-                                Pending Validasi
+                                Pending
+                            </span>
+{% else %}
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error">
+<span class="w-1.5 h-1.5 rounded-full bg-error mr-1.5"></span>
+                                Ditolak
                             </span>
 {% endif %}
 </td>
 <td class="px-sm py-2.5 md:px-md md:py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
-{% if not emp.is_validated %}
+{% if emp.validation_status == 'PENDING' or emp.validation_status == 'REJECTED' %}
 <button class="validate-employee-btn p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all"
     title="Validasi Wajah & Profil Karyawan"
     data-id="{{ emp.id }}"
@@ -413,9 +418,17 @@
 
         <div class="pt-md border-t border-outline-variant/30 flex gap-sm justify-end items-center mt-md">
             <button type="button" onclick="closeValidateModal()" class="px-md py-sm border border-outline text-secondary rounded-lg font-label-md hover:bg-surface-container transition-all">Batal</button>
-            <button type="button" onclick="submitValidateForm()" class="px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm hover:bg-primary-container transition-all font-bold flex items-center gap-1">
-                <span class="material-symbols-outlined text-[20px]">verified</span> Validasi & Setujui
-            </button>
+            <form id="validate-employee-form" method="POST" action="{% url 'karyawan' %}" class="flex gap-sm">
+                {% csrf_token %}
+                <input type="hidden" name="action" id="validate-action" value="approve">
+                <input type="hidden" name="id" id="validate-emp-id">
+                <button type="button" onclick="submitValidateForm('reject')" class="px-xl py-sm bg-error text-white rounded-lg font-label-md shadow-sm hover:bg-error/90 transition-all font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[20px]">cancel</span> Tolak
+                </button>
+                <button type="button" onclick="submitValidateForm('approve')" class="px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm hover:bg-primary-container transition-all font-bold flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[20px]">verified</span> Setujui
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -492,7 +505,8 @@
         validateModalContent.classList.add('scale-95');
     }
     
-    function submitValidateForm() {
+    function submitValidateForm(actionType) {
+        document.getElementById('validate-action').value = actionType;
         document.getElementById('validate-employee-form').submit();
     }
     

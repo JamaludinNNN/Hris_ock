@@ -126,7 +126,7 @@ def presensi_view(request):
                 fullname=request.user.username.split('@')[0].capitalize(),
                 division='General',
                 position='Staff',
-                is_validated=True
+                validation_status='APPROVED'
             )
             # Refresh User object in memory to populate the employee_profile relationship cache
             from django.contrib.auth import get_user_model
@@ -140,7 +140,7 @@ def presensi_view(request):
                 'geofence_radius': sys_settings['radius'],
                 'verification_method': sys_settings['verification_method'],
                 'has_face_data': False,
-                'is_validated': False,
+                'validation_status': 'PENDING',
                 'history': [],
                 'branches': [],
             })
@@ -184,13 +184,13 @@ def presensi_view(request):
             target_lon = sys_settings['longitude']
             target_radius = sys_settings['radius']
 
-        if not employee.is_validated and not django_settings.DEBUG:
+        if employee.validation_status != 'APPROVED' and not django_settings.DEBUG:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
             branches = Branch.objects.all().order_by('name')
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data,
-                'is_validated': False,
+                'validation_status': 'PENDING',
                 'error': 'Gagal presensi: Akun Anda belum divalidasi oleh Admin.',
                 'office_lat': target_lat,
                 'office_lon': target_lon,
@@ -249,7 +249,7 @@ def presensi_view(request):
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data or django_settings.DEBUG,
-                'is_validated': employee.is_validated or django_settings.DEBUG,
+                'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
                 'error': 'Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.',
                 'office_lat': target_lat,
                 'office_lon': target_lon,
@@ -267,7 +267,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'is_validated': employee.is_validated or django_settings.DEBUG,
+                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
                     'error': 'Gagal presensi: Verifikasi keaktifan (Liveness Detection) gagal atau tidak lengkap.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -284,7 +284,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'is_validated': employee.is_validated or django_settings.DEBUG,
+                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
                     'error': f'Gagal presensi: Tingkat kemiripan wajah terlalu rendah ({int(face_confidence_score * 100)}%). Minimal harus 90%.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -311,7 +311,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'is_validated': employee.is_validated or django_settings.DEBUG,
+                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
                     'error': 'Gagal presensi: Koordinat GPS tidak didapatkan. Pastikan izin lokasi aktif.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -334,14 +334,14 @@ def presensi_view(request):
             distance = R * c
             
             # Enforce max radius limit of 100 meters
-            allowed_radius = min(float(target_radius), 100.0)
+            allowed_radius = float(target_radius)
             if distance > allowed_radius:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
                 branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'is_validated': employee.is_validated or django_settings.DEBUG,
+                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
                     'error': f'Gagal presensi: Anda berada di luar radius kantor cabang ({int(distance)} meter dari cabang, batas maks: {int(allowed_radius)} meter).',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -384,14 +384,19 @@ def presensi_view(request):
                 status = 'late'
             
         if gps_accuracy is not None and gps_accuracy > 30.0:
-            dist_str = f"{distance:.1f}m" if distance is not None else "N/A"
-            log_security_event(
-                request.user.username,
-                employee.id,
-                "POOR_GPS_ACCURACY_ALLOWED",
-                f"GPS accuracy poor ({gps_accuracy:.1f} meters) but allowed. "
-                f"Distance: {dist_str}, Target Radius: {target_radius}m."
-            )
+            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+            branches = Branch.objects.all().order_by('name')
+            return render(request, 'presensi/presensi.html', {
+                'history': history,
+                'has_face_data': has_face_data or django_settings.DEBUG,
+                'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                'error': f'Gagal presensi: Akurasi GPS Anda terlalu lemah ({gps_accuracy:.1f} meter). Maksimal 30 meter. Cari lokasi yang lebih terbuka.',
+                'office_lat': target_lat,
+                'office_lon': target_lon,
+                'geofence_radius': target_radius,
+                'verification_method': sys_settings['verification_method'],
+                'branches': branches,
+            })
 
         # Create Attendance with Audit Logs
         Attendance.objects.create(
@@ -450,7 +455,7 @@ def presensi_view(request):
     return render(request, 'presensi/presensi.html', {
         'history': history,
         'has_face_data': has_face_data or django_settings.DEBUG,
-        'is_validated': employee.is_validated or django_settings.DEBUG,
+        'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
         'work_duration_str': work_duration_str,
         'work_status': work_status,
         'check_in_today': check_in_today,
@@ -481,7 +486,7 @@ def registrasi(request):
                     }
                 )
                 # Otomatis validasi karyawan setelah wajah berhasil didaftarkan
-                employee.is_validated = True
+                employee.validation_status = 'APPROVED'
                 employee.save()
             except Employee.DoesNotExist:
                 pass
@@ -553,10 +558,19 @@ def karyawan(request):
                 pass
             return redirect('karyawan')
 
-        elif action == 'validate':
+        elif action == 'approve':
             try:
                 emp = Employee.objects.get(id=emp_id)
-                emp.is_validated = True
+                emp.validation_status = 'APPROVED'
+                emp.save()
+            except Employee.DoesNotExist:
+                pass
+            return redirect('karyawan')
+
+        elif action == 'reject':
+            try:
+                emp = Employee.objects.get(id=emp_id)
+                emp.validation_status = 'REJECTED'
                 emp.save()
             except Employee.DoesNotExist:
                 pass
@@ -825,7 +839,7 @@ def register_view(request):
                 division=division,
                 position=position,
                 profile_image=profile_image,
-                is_validated=False,
+                validation_status='PENDING',
                 branch=branch
             )
             
@@ -851,7 +865,7 @@ def registrasi_wajah(request):
                 fullname=request.user.username.split('@')[0].capitalize(),
                 division='General',
                 position='Staff',
-                is_validated=False
+                validation_status='PENDING'
             )
             # Refresh User object in memory to populate the employee_profile relationship cache
             from django.contrib.auth import get_user_model
@@ -865,7 +879,7 @@ def registrasi_wajah(request):
                 'geofence_radius': sys_settings['radius'],
                 'verification_method': sys_settings['verification_method'],
                 'has_face_data': False,
-                'is_validated': False,
+                'validation_status': 'PENDING',
                 'history': [],
                 'branches': [],
             })
@@ -890,8 +904,11 @@ def registrasi_wajah(request):
                 }
             )
             # Revoke/set validation status to False when they register/update their face biometric! Admin must validate.
-            employee.is_validated = False
+            employee.validation_status = 'PENDING'
             employee.save()
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                return JsonResponse({'status': 'success'})
             return redirect('presensi')
             
     # For GET, render registrasi_wajah.html template
