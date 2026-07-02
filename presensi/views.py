@@ -851,7 +851,7 @@ def registrasi_wajah(request):
                 fullname=request.user.username.split('@')[0].capitalize(),
                 division='General',
                 position='Staff',
-                is_validated=True
+                is_validated=False
             )
             # Refresh User object in memory to populate the employee_profile relationship cache
             from django.contrib.auth import get_user_model
@@ -889,8 +889,8 @@ def registrasi_wajah(request):
                     'face_image': face_image
                 }
             )
-            # Set validation status to True when they register/update their face biometric!
-            employee.is_validated = True
+            # Revoke/set validation status to False when they register/update their face biometric! Admin must validate.
+            employee.is_validated = False
             employee.save()
             return redirect('presensi')
             
