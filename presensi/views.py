@@ -410,15 +410,21 @@ def registrasi(request):
         emp_id = request.POST.get('employee_id')
         embedding = request.POST.get('embedding', '')
         face_image = request.POST.get('face_image_base64', '')
-        if emp_id:
-            employee = Employee.objects.get(id=emp_id)
-            FaceData.objects.update_or_create(
-                employee=employee,
-                defaults={
-                    'embedding': embedding,
-                    'face_image': face_image
-                }
-            )
+        if emp_id and embedding:
+            try:
+                employee = Employee.objects.get(id=emp_id)
+                FaceData.objects.update_or_create(
+                    employee=employee,
+                    defaults={
+                        'embedding': embedding,
+                        'face_image': face_image
+                    }
+                )
+                # Otomatis validasi karyawan setelah wajah berhasil didaftarkan
+                employee.is_validated = True
+                employee.save()
+            except Employee.DoesNotExist:
+                pass
             return redirect('karyawan')
     employees = Employee.objects.all()
     registered_faces = []
@@ -432,7 +438,8 @@ def registrasi(request):
     registered_faces_json = json.dumps(registered_faces)
     return render(request, 'registrasi/registrasi.html', {
         'employees': employees,
-        'registered_faces_json': registered_faces_json
+        'registered_faces_json': registered_faces_json,
+        'debug_mode': django_settings.DEBUG
     })
 
 @login_required(login_url='login')

@@ -58,6 +58,18 @@
             </a>
         {% endif %}
         
+        <!-- Daftar Wajah Mandiri (Karyawan only) -->
+        {% if not request.user.role == 'admin' and not request.user.is_superuser %}
+            {% if request.resolver_match.url_name == 'registrasi_wajah' %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'registrasi_wajah' %}">
+            {% else %}
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'registrasi_wajah' %}">
+            {% endif %}
+                <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
+                <span class="font-body-md text-body-md">Daftar Wajah</span>
+            </a>
+        {% endif %}
+        
         <!-- Presensi -->
         {% if request.resolver_match.url_name == 'presensi' %}
         <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'presensi' %}">
