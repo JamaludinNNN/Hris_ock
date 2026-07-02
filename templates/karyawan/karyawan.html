@@ -114,6 +114,18 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.05);
         }
     </style>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .swal2-popup {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            border-radius: 16px !important;
+        }
+        .swal2-confirm, .swal2-cancel {
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+    </style>
 </head>
 <body class="bg-background text-on-surface">
 <!-- SideNavBar (Shared Component) -->
@@ -469,10 +481,22 @@
     function triggerDeleteEmployee() {
         const id = document.getElementById('edit-emp-id').value;
         const name = document.getElementById('edit-fullname').value;
-        if (confirm(`Apakah Anda yakin ingin menghapus data karyawan ${name}?`)) {
-            document.getElementById('delete-emp-id').value = id;
-            document.getElementById('delete-employee-form').submit();
-        }
+        
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Apakah Anda yakin ingin menghapus data karyawan ${name}? Tindakan ini tidak dapat dibatalkan.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#BA1A1A',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Ya, Hapus Data',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-emp-id').value = id;
+                document.getElementById('delete-employee-form').submit();
+            }
+        });
     }
 
     const validateModal = document.getElementById('validate-employee-modal');

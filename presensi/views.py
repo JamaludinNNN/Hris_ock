@@ -140,7 +140,7 @@ def presensi_view(request):
                 'geofence_radius': sys_settings['radius'],
                 'verification_method': sys_settings['verification_method'],
                 'has_face_data': False,
-                'validation_status': 'PENDING',
+                'face_status': 'PENDING',
                 'history': [],
                 'branches': [],
             })
@@ -184,19 +184,11 @@ def presensi_view(request):
             target_lon = sys_settings['longitude']
             target_radius = sys_settings['radius']
 
-        if employee.validation_status != 'APPROVED' and not django_settings.DEBUG:
-            history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
-            branches = Branch.objects.all().order_by('name')
-            return render(request, 'presensi/presensi.html', {
-                'history': history,
-                'has_face_data': has_face_data,
-                'validation_status': 'PENDING',
-                'error': 'Gagal presensi: Akun Anda belum divalidasi oleh Admin.',
-                'office_lat': target_lat,
-                'office_lon': target_lon,
-                'geofence_radius': target_radius,
-                'verification_method': sys_settings['verification_method'],
-                'branches': branches,
+        if employee.face_status != 'APPROVED' and not django_settings.DEBUG:
+            from django.http import JsonResponse
+            return JsonResponse({
+                'success': False,
+                'message': 'Registrasi wajah masih menunggu validasi Administrator.'
             })
 
         action_type = request.POST.get('type')
@@ -249,7 +241,7 @@ def presensi_view(request):
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data or django_settings.DEBUG,
-                'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
                 'error': 'Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.',
                 'office_lat': target_lat,
                 'office_lon': target_lon,
@@ -267,7 +259,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                    'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
                     'error': 'Gagal presensi: Verifikasi keaktifan (Liveness Detection) gagal atau tidak lengkap.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -284,7 +276,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                    'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
                     'error': f'Gagal presensi: Tingkat kemiripan wajah terlalu rendah ({int(face_confidence_score * 100)}%). Minimal harus 90%.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -311,7 +303,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                    'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
                     'error': 'Gagal presensi: Koordinat GPS tidak didapatkan. Pastikan izin lokasi aktif.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -341,7 +333,7 @@ def presensi_view(request):
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
                     'has_face_data': has_face_data or django_settings.DEBUG,
-                    'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                    'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
                     'error': f'Gagal presensi: Anda berada di luar radius kantor cabang ({int(distance)} meter dari cabang, batas maks: {int(allowed_radius)} meter).',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -389,7 +381,7 @@ def presensi_view(request):
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data or django_settings.DEBUG,
-                'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+                'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
                 'error': f'Gagal presensi: Akurasi GPS Anda terlalu lemah ({gps_accuracy:.1f} meter). Maksimal 30 meter. Cari lokasi yang lebih terbuka.',
                 'office_lat': target_lat,
                 'office_lon': target_lon,
@@ -455,7 +447,7 @@ def presensi_view(request):
     return render(request, 'presensi/presensi.html', {
         'history': history,
         'has_face_data': has_face_data or django_settings.DEBUG,
-        'validation_status': employee.validation_status if not django_settings.DEBUG else 'APPROVED',
+        'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
         'work_duration_str': work_duration_str,
         'work_status': work_status,
         'check_in_today': check_in_today,
@@ -486,7 +478,7 @@ def registrasi(request):
                     }
                 )
                 # Otomatis validasi karyawan setelah wajah berhasil didaftarkan
-                employee.validation_status = 'APPROVED'
+                employee.face_status = 'APPROVED'
                 employee.save()
             except Employee.DoesNotExist:
                 pass
@@ -561,7 +553,10 @@ def karyawan(request):
         elif action == 'approve':
             try:
                 emp = Employee.objects.get(id=emp_id)
-                emp.validation_status = 'APPROVED'
+                emp.face_status = 'APPROVED'
+                emp.face_verified = True
+                from django.utils import timezone
+                emp.face_verified_at = timezone.now()
                 emp.save()
             except Employee.DoesNotExist:
                 pass
@@ -570,7 +565,9 @@ def karyawan(request):
         elif action == 'reject':
             try:
                 emp = Employee.objects.get(id=emp_id)
-                emp.validation_status = 'REJECTED'
+                emp.face_status = 'REJECTED'
+                emp.face_verified = False
+                emp.face_verified_at = None
                 emp.save()
             except Employee.DoesNotExist:
                 pass
@@ -879,7 +876,7 @@ def registrasi_wajah(request):
                 'geofence_radius': sys_settings['radius'],
                 'verification_method': sys_settings['verification_method'],
                 'has_face_data': False,
-                'validation_status': 'PENDING',
+                'face_status': 'PENDING',
                 'history': [],
                 'branches': [],
             })
@@ -904,7 +901,9 @@ def registrasi_wajah(request):
                 }
             )
             # Revoke/set validation status to False when they register/update their face biometric! Admin must validate.
-            employee.validation_status = 'PENDING'
+            employee.face_status = 'PENDING'
+            employee.face_verified = False
+            employee.face_verified_at = None
             employee.save()
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                 from django.http import JsonResponse

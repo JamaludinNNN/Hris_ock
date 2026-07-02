@@ -144,6 +144,17 @@
             background-size: 25px 25px;
         }
     </style>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .swal2-popup {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            border-radius: 16px !important;
+        }
+        .swal2-confirm {
+            border-radius: 8px !important;
+        }
+    </style>
 </head>
 <body class="bg-background text-on-background font-body-md">
 
@@ -1023,15 +1034,32 @@
                     });
                     
                     if (response.ok) {
-                        alert("Registrasi Wajah Berhasil\n\nData wajah Anda telah berhasil disimpan.\nRegistrasi sedang menunggu proses validasi oleh Administrator.\n\nSelama belum divalidasi Admin, Anda belum dapat melakukan Presensi.");
-                        window.location.href = "{% url 'presensi' %}";
+                        Swal.fire({
+                            title: 'Registrasi Wajah Berhasil',
+                            html: '<p class="text-body-md text-on-surface">Data wajah Anda berhasil disimpan.</p><p class="text-body-md text-on-surface mt-2">Registrasi Anda sedang menunggu proses validasi oleh Administrator.</p><p class="text-body-sm text-secondary font-medium mt-3 bg-error/10 p-2 rounded">Selama belum divalidasi, Anda belum dapat melakukan Presensi.</p>',
+                            icon: 'success',
+                            confirmButtonText: 'Baik',
+                            confirmButtonColor: '#006B5B'
+                        }).then(() => {
+                            window.location.href = "{% url 'presensi' %}";
+                        });
                     } else {
-                        alert("Gagal menyimpan data. Silakan coba lagi.");
+                        Swal.fire({
+                            title: 'Gagal',
+                            text: 'Gagal menyimpan data. Silakan coba lagi.',
+                            icon: 'error',
+                            confirmButtonColor: '#BA1A1A'
+                        });
                         saveBtn.disabled = false;
                         saveBtn.innerText = "Simpan Data Wajah";
                     }
                 } catch (err) {
-                    alert("Terjadi kesalahan jaringan.");
+                    Swal.fire({
+                        title: 'Error Jaringan',
+                        text: 'Terjadi kesalahan saat terhubung ke server.',
+                        icon: 'error',
+                        confirmButtonColor: '#BA1A1A'
+                    });
                     saveBtn.disabled = false;
                     saveBtn.innerText = "Simpan Data Wajah";
                 }

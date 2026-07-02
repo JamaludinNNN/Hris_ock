@@ -135,6 +135,14 @@
             backdrop-filter: blur(12px);
         }
     </style>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .swal2-popup {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            border-radius: 16px !important;
+        }
+    </style>
 </head>
 <body class="bg-background text-on-surface font-body-md min-h-screen">
 
@@ -168,6 +176,15 @@
         <div class="grid grid-cols-12 gap-sm md:gap-md">
             <!-- Camera and Main Controls -->
             <div class="col-span-12 lg:col-span-8">
+                {% if face_status != 'APPROVED' %}
+                <div class="bg-amber-500/10 border-2 border-amber-500/20 rounded-2xl p-6 md:p-10 text-center flex flex-col items-center justify-center min-h-[300px]">
+                    <span class="material-symbols-outlined text-[64px] text-amber-500 mb-4 animate-bounce">pending_actions</span>
+                    <h3 class="font-headline-lg text-amber-700 mb-2">Registrasi Belum Diverifikasi</h3>
+                    <p class="text-body-md text-amber-800/80 max-w-md mx-auto">
+                        Data wajah Anda masih menunggu validasi Administrator. Silakan tunggu hingga Admin menyetujui registrasi Anda.
+                    </p>
+                </div>
+                {% else %}
                 <div class="bg-surface-container-lowest rounded-xl p-base shadow-sm border border-outline-variant relative overflow-hidden">
                     <div class="relative rounded-lg overflow-hidden bg-on-background aspect-square md:aspect-video flex items-center justify-center biometric-grid">
                         <video id="camera-stream" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
@@ -215,8 +232,9 @@
                                 <span class="block text-xs sm:text-body-md">Memulai Autentikasi...</span>
                             </div>
                         </div>
+                        </div>
                     </div>
-
+                {% endif %}
                     <!-- Refined Action Buttons -->
                     <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col gap-sm sm:gap-md w-full" data-office-lat="{{ office_lat|escapejs }}" data-office-lon="{{ office_lon|escapejs }}" data-geofence-radius="{{ geofence_radius|escapejs }}" data-verification-method="{{ verification_method|escapejs }}" data-has-registered-branch="{% if request.user.employee_profile.branch %}true{% else %}false{% endif %}" data-debug-mode="{% if debug_mode %}true{% else %}false{% endif %}">
                         {% csrf_token %}
@@ -252,7 +270,7 @@
                                 <span class="material-symbols-outlined text-[28px] sm:text-[32px]">logout</span>
                                 Presensi Keluar
                             </button>
-                            {% elif validation_status == 'PENDING' or validation_status == 'REJECTED' %}
+                            {% elif face_status == 'PENDING' or face_status == 'REJECTED' %}
                             <button type="submit" name="type" value="in" disabled class="flex-1 bg-surface-container text-on-surface/40 font-headline-md py-md sm:py-lg rounded-xl opacity-50 cursor-not-allowed flex items-center justify-center gap-md">
                                 <span class="material-symbols-outlined text-[28px] sm:text-[32px]">login</span>
                                 Presensi Masuk
@@ -285,7 +303,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% elif validation_status == 'PENDING' or validation_status == 'REJECTED' %}
+                    {% elif face_status == 'PENDING' or face_status == 'REJECTED' %}
                     <div class="mt-md bg-amber-500/10 border border-amber-500/20 p-md rounded-xl text-amber-700 font-label-md flex items-center gap-sm">
                         <span class="material-symbols-outlined text-[32px] text-amber-600">pending_actions</span>
                         <div>
@@ -1583,25 +1601,26 @@
         syncOfficeCoordinatesFromSelectedBranch();
 
         // Start camera immediately - do NOT wait for AI models to load
-        startCamera();
-        trackUserLocation();
-
-
-
-        // Wait for faceapi library to be available (CDN might load slightly after DOMContentLoaded)
-        let faceapiWaitCount = 0;
-        const waitForFaceApi = setInterval(() => {
-            faceapiWaitCount++;
-            if (typeof faceapi !== 'undefined') {
-                clearInterval(waitForFaceApi);
-                loadModels();
-            } else if (faceapiWaitCount >= 20) {
-                // 10 seconds passed, faceapi library itself never loaded
-                clearInterval(waitForFaceApi);
-                cameraStatusText.innerText = "Gagal mengunduh library AI. Coba refresh.";
-                console.error("faceapi library could not be loaded from any CDN after 10 seconds.");
-            }
-        }, 500);
+        const videoElement = document.getElementById('camera-stream');
+        if (videoElement) {
+            startCamera();
+            trackUserLocation();
+            
+            // Wait for faceapi library to be available (CDN might load slightly after DOMContentLoaded)
+            let faceapiWaitCount = 0;
+            const waitForFaceApi = setInterval(() => {
+                faceapiWaitCount++;
+                if (typeof faceapi !== 'undefined') {
+                    clearInterval(waitForFaceApi);
+                    loadModels();
+                } else if (faceapiWaitCount >= 20) {
+                    // 10 seconds passed, faceapi library itself never loaded
+                    clearInterval(waitForFaceApi);
+                    if(cameraStatusText) cameraStatusText.innerText = "Gagal mengunduh library AI. Coba refresh.";
+                    console.error("faceapi library could not be loaded from any CDN after 10 seconds.");
+                }
+            }, 500);
+        }
     });
 </script>
 </body>

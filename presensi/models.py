@@ -27,16 +27,18 @@ class Employee(models.Model):
     division = models.CharField(max_length=100)
     position = models.CharField(max_length=100)
     profile_image = models.TextField(null=True, blank=True)
-    VALIDATION_CHOICES = (
+    FACE_STATUS_CHOICES = (
         ('PENDING', 'Pending'),
         ('APPROVED', 'Approved'),
         ('REJECTED', 'Rejected'),
     )
-    validation_status = models.CharField(
+    face_status = models.CharField(
         max_length=20, 
-        choices=VALIDATION_CHOICES, 
+        choices=FACE_STATUS_CHOICES, 
         default='PENDING'
     )
+    face_verified = models.BooleanField(default=False)
+    face_verified_at = models.DateTimeField(null=True, blank=True)
     branch = models.ForeignKey(
         'Branch',
         on_delete=models.SET_NULL,
