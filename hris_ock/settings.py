@@ -34,6 +34,17 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
 ]
 
+# When DEBUG is True, allow all local network IPs (for mobile device access on same WiFi)
+if DEBUG:
+    import socket
+    try:
+        local_ip = socket.gethostbyname(socket.gethostname())
+        # Add local subnet (e.g. 192.168.1.x)
+        subnet = '.'.join(local_ip.split('.')[:3])
+        CSRF_TRUSTED_ORIGINS += [f'http://{subnet}.{i}:8000' for i in range(1, 255)]
+    except Exception:
+        pass
+
 
 # Application definition
 

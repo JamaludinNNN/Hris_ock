@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from .settings_helper import load_system_settings, save_system_settings
 import random
 import math
+from decimal import Decimal, InvalidOperation
 import json
 from django.utils import timezone
 from datetime import datetime
@@ -594,20 +595,24 @@ def settings(request):
         action = request.POST.get('action')
         
         if action == 'add_branch':
-            name = request.POST.get('name')
-            latitude = request.POST.get('latitude')
-            longitude = request.POST.get('longitude')
-            radius = request.POST.get('radius', 150)
+            name = request.POST.get('name', '').strip()
+            latitude_raw = request.POST.get('latitude', '').strip().replace(',', '.')
+            longitude_raw = request.POST.get('longitude', '').strip().replace(',', '.')
+            radius_raw = request.POST.get('radius', '150').strip() or '150'
             
-            if name and latitude and longitude:
+            if name and latitude_raw and longitude_raw:
                 try:
+                    lat_dec = Decimal(latitude_raw).quantize(Decimal('0.000001'))
+                    lng_dec = Decimal(longitude_raw).quantize(Decimal('0.000001'))
                     Branch.objects.create(
                         name=name,
-                        latitude=float(latitude),
-                        longitude=float(longitude),
-                        radius=int(radius)
+                        latitude=lat_dec,
+                        longitude=lng_dec,
+                        radius=int(radius_raw)
                     )
                     success_msg = f"Cabang '{name}' berhasil ditambahkan."
+                except InvalidOperation:
+                    error_msg = "Format koordinat tidak valid. Gunakan titik (.) sebagai pemisah desimal."
                 except Exception as e:
                     error_msg = f"Gagal menambahkan cabang: {str(e)}"
             else:
