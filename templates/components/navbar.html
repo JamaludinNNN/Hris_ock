@@ -9,19 +9,21 @@
                     <img src="{{ request.user.employee_profile.profile_image }}" class="w-full h-full object-cover">
                 {% else %}
                     <div class="w-full h-full bg-primary-fixed flex items-center justify-center text-primary font-bold">
-                        {{ request.user.employee_profile.fullname|default:request.user.username|make_list|first }}
+                        {% with name=request.user.employee_profile.fullname|default:request.user.username %}
+                            {{ name|make_list|first|upper }}
+                        {% endwith %}
                     </div>
                 {% endif %}
             </div>
             <div class="hidden lg:block">
                 <p class="font-label-md text-label-md leading-none text-on-surface font-bold">
-                    {{ request.user.employee_profile.fullname|default:request.user.username }}
+                    {% if request.user.employee_profile %}{{ request.user.employee_profile.fullname|default:request.user.username }}{% else %}{{ request.user.username }}{% endif %}
                 </p>
                 <p class="font-label-sm text-secondary text-[10px] uppercase tracking-wider mt-0.5">
                     {% if request.user.role == 'admin' or request.user.is_superuser %}
-                        HRD / Admin - {{ request.user.employee_profile.position|default:"System Admin" }}
+                        HRD / Admin - {% if request.user.employee_profile %}{{ request.user.employee_profile.position|default:"System Admin" }}{% else %}System Admin{% endif %}
                     {% else %}
-                        Karyawan - {{ request.user.employee_profile.position|default:"Staff" }}
+                        Karyawan - {% if request.user.employee_profile %}{{ request.user.employee_profile.position|default:"Staff" }}{% else %}Staff{% endif %}
                     {% endif %}
                 </p>
             </div>

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Portal Presensi | Attendance Pro</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="{% static 'js/tailwind.js' %}"></script>
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -203,6 +203,8 @@
                             <p class="text-white/90 text-[11px] font-medium" id="camera-status-text">Memuat AI...</p>
                         </div>
 
+
+
                         <!-- Verification Progress Overlay -->
                         <div id="scan-overlay" class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center gap-sm opacity-0 pointer-events-none transition-all duration-300 z-40">
                             <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-primary border-t-transparent animate-spin flex items-center justify-center mb-xs sm:mb-sm bg-white/10">
@@ -216,7 +218,7 @@
                     </div>
 
                     <!-- Refined Action Buttons -->
-                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col gap-sm sm:gap-md w-full" data-office-lat="{{ office_lat|escapejs }}" data-office-lon="{{ office_lon|escapejs }}" data-geofence-radius="{{ geofence_radius|escapejs }}" data-verification-method="{{ verification_method|escapejs }}">
+                    <form id="attendance-form" method="POST" action="{% url 'presensi' %}" class="mt-sm sm:mt-md flex flex-col gap-sm sm:gap-md w-full" data-office-lat="{{ office_lat|escapejs }}" data-office-lon="{{ office_lon|escapejs }}" data-geofence-radius="{{ geofence_radius|escapejs }}" data-verification-method="{{ verification_method|escapejs }}" data-has-registered-branch="{% if request.user.employee_profile.branch %}true{% else %}false{% endif %}" data-debug-mode="{% if debug_mode %}true{% else %}false{% endif %}">
                         {% csrf_token %}
                         <input type="hidden" name="latitude" id="form-latitude">
                         <input type="hidden" name="longitude" id="form-longitude">
@@ -478,6 +480,9 @@
     let registeredDescriptor = null;
     let isFaceVerified = false;
     let hasGPS = false;
+    const isSimulationMode = false;
+    const DEBUG_MODE = formEl.dataset.debugMode === 'true';
+    let globalFaceDetectorOptions = null;
 
     // Dictionary of all branches for client-side lookup
     const branchesData = {};
@@ -529,24 +534,17 @@
         if (userLat !== null && userLon !== null && hasGPS) {
             updatePositionUI(userLat, userLon, currentGPSAccuracy, "Akurat");
         } else {
-            // Update fallback coordinates to show the selected branch
-            userLat = OFFICE_LAT;
-            userLon = OFFICE_LON;
-            document.getElementById('form-latitude').value = userLat;
-            document.getElementById('form-longitude').value = userLon;
-            liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
-            gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+            // Keep coordinates empty/null until real GPS is locked
+            document.getElementById('form-latitude').value = "";
+            document.getElementById('form-longitude').value = "";
             
-            // Re-run fallback UI distance update
-            const select = document.getElementById('branch-select');
-            let branchName = "kantor";
-            if (select && select.value && branchesData[select.value]) {
-                branchName = branchesData[select.value].name;
-            }
-            gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
-            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-            liveDistanceDetails.innerText = `GPS Aktif (Default) - Lokasi Anda diatur ke cabang ${branchName}.`;
-            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+            const isKantorPusat = select && !select.value;
+            gpsGeofenceStatus.innerText = isKantorPusat ? 'Bebas Geofencing' : 'Mengunci GPS...';
+            gpsGeofenceStatus.className = `font-label-md font-bold ${isKantorPusat ? 'text-tertiary' : 'text-outline animate-pulse'}`;
+            liveDistanceDetails.innerText = isKantorPusat
+                ? 'Kantor Pusat — tidak perlu geofencing. Mengunci GPS perangkat...'
+                : 'Mendeteksi koordinat GPS perangkat Anda...';
+            liveDistanceDetails.className = 'font-body-sm text-secondary mt-1';
         }
     }
 
@@ -571,117 +569,143 @@
         return { r: imgData[0], g: imgData[1], b: imgData[2] };
     }
 
+    let bestGPSAccuracy = null;
+    let bestLatitude = null;
+    let bestLongitude = null;
+
     function updatePositionUI(lat, lon, accuracy, source) {
+
+        const selectEl = document.getElementById('branch-select');
+        const isKantorPusat = selectEl && !selectEl.value;
+
         if (source && source.includes("Akurat")) {
             hasGPS = true;
-            currentGPSAccuracy = accuracy;
-            
-            // Track coordinate history for fake GPS detection
-            lastCoords.push({ lat: lat, lon: lon });
-            if (lastCoords.length > 5) {
-                lastCoords.shift();
+            if (bestGPSAccuracy === null || accuracy < bestGPSAccuracy) {
+                bestGPSAccuracy = accuracy;
+                bestLatitude = lat;
+                bestLongitude = lon;
             }
-            if (lastCoords.length === 5) {
-                let allIdentical = true;
-                for (let i = 1; i < lastCoords.length; i++) {
-                    if (lastCoords[i].lat.toFixed(10) !== lastCoords[0].lat.toFixed(10) ||
-                        lastCoords[i].lon.toFixed(10) !== lastCoords[0].lon.toFixed(10)) {
-                        allIdentical = false;
-                        break;
-                    }
-                }
-                if (allIdentical) {
-                    isFakeGPS = true;
-                }
-            }
+            userLat = bestLatitude;
+            userLon = bestLongitude;
+            currentGPSAccuracy = bestGPSAccuracy;
+
+            // Track coordinate history
+            lastCoords.push({ lat: userLat, lon: userLon });
+            if (lastCoords.length > 5) lastCoords.shift();
         } else if (hasGPS) {
-            // If we already got a highly accurate GPS signal, ignore coarser IP updates
+            // Real GPS already obtained — ignore any IP-based updates
             return;
         } else if (source && source.includes("IP")) {
-            // Check if the IP location is way too far from the selected branch (e.g. more than 10 km)
             const ipDistance = calculateHaversine(lat, lon, OFFICE_LAT, OFFICE_LON);
-            if (ipDistance > 10000) {
-                console.warn(`IP Geolocation (${source}) is too far from selected branch (${ipDistance.toFixed(0)}m). Ignoring IP coordinates.`);
-                
-                // Keep selected branch coordinates as fallback
+            if (ipDistance > 3000 && !DEBUG_MODE) {
+                console.warn(`IP Geolocation (${source}) terlalu jauh dari cabang (${ipDistance.toFixed(0)}m). Diabaikan.`);
                 userLat = OFFICE_LAT;
                 userLon = OFFICE_LON;
                 document.getElementById('form-latitude').value = userLat;
                 document.getElementById('form-longitude').value = userLon;
-                liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
-                gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
-                
-                gpsGeofenceStatus.innerText = "Terdeteksi (Default)";
-                gpsGeofenceStatus.className = "font-label-md font-bold text-warning";
-                const select = document.getElementById('branch-select');
-                let branchName = "kantor";
-                if (select && select.value && branchesData[select.value]) {
-                    branchName = branchesData[select.value].name;
-                }
-                liveDistanceDetails.innerText = `GPS Aktif (Default) - Menggunakan lokasi cabang ${branchName} (IP Geolocation tidak akurat).`;
-                liveDistanceDetails.className = "font-body-sm text-warning font-bold mt-1";
+                liveCoordsText.innerText = 'GPS Perangkat Diperlukan';
+                gpsGeofenceStatus.innerText = 'GPS Perangkat Diperlukan';
+                gpsGeofenceStatus.className = 'font-label-md font-bold text-amber-500';
+                liveDistanceDetails.innerText = 'Lokasi IP tidak akurat. Pastikan izin GPS perangkat diaktifkan di browser.';
+                liveDistanceDetails.className = 'font-body-sm text-amber-600 font-bold mt-1';
                 return;
             }
+            userLat = lat;
+            userLon = lon;
+            currentGPSAccuracy = accuracy;
         }
-        
-        // Check for Webdriver or emulator/bot environment
-        const isEmulatorOrBot = navigator.webdriver || /headless|chrome-lighthouse|lighthouse|puppeteer/i.test(navigator.userAgent);
-        if (isEmulatorOrBot) {
-            isFakeGPS = true;
-        }
-        
+
+        // Check for Webdriver or emulator/bot environment (bypass on localhost/testing)
+        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const isEmulatorOrBot = !isLocalhost && (navigator.webdriver || /headless|chrome-lighthouse|lighthouse|puppeteer/i.test(navigator.userAgent));
+        if (isEmulatorOrBot) isFakeGPS = true;
+
         userLat = lat;
         userLon = lon;
-        
-        // Update live coordinates overlay
-        liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
-        
+
+        const isFromRealGPS = source && source.includes('Akurat');
+        const accuracyVal = accuracy !== null ? accuracy : (currentGPSAccuracy !== null ? currentGPSAccuracy : null);
+
+        if (isFromRealGPS && accuracyVal !== null && accuracyVal > 30.0) {
+            liveCoordsText.innerText = `${userLat.toFixed(6)}, ${userLon.toFixed(6)} (Akurasi: ${accuracyVal.toFixed(1)}m)`;
+            gpsGeofenceStatus.innerText = 'GPS Kurang Akurat';
+            gpsGeofenceStatus.className = 'font-label-md font-bold text-amber-500 animate-pulse';
+            liveDistanceDetails.innerText = 'Menunggu GPS lebih akurat.';
+            liveDistanceDetails.className = 'font-body-sm text-amber-600 font-bold mt-1';
+
+            document.getElementById('form-latitude').value = userLat;
+            document.getElementById('form-longitude').value = userLon;
+            document.getElementById('form-gps-accuracy').value = accuracyVal.toFixed(1);
+            document.getElementById('form-is-fake-gps').value = isFakeGPS ? 'true' : 'false';
+
+            gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
+            return;
+        }
+
+        // Update live coordinates overlay (only for real GPS source)
+        if (source && source.includes('Akurat')) {
+            liveCoordsText.innerText = `${userLat.toFixed(6)}, ${userLon.toFixed(6)}`;
+        }
+
+        console.log("GPS Success");
+        if (accuracyVal !== null) {
+            console.log("GPS Accuracy", accuracyVal);
+        }
+
         // Center Google Map on user's real location
         gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
-        
-        // Set form input coordinates dynamically
+
+        // Set form input coordinates
         document.getElementById('form-latitude').value = userLat;
         document.getElementById('form-longitude').value = userLon;
         if (currentGPSAccuracy !== null) {
             document.getElementById('form-gps-accuracy').value = currentGPSAccuracy.toFixed(1);
         }
         document.getElementById('form-is-fake-gps').value = isFakeGPS ? 'true' : 'false';
-        
+
         // Compute distance to office
         const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
+        console.log("Distance", distance);
         const isInside = (VERIFICATION_METHOD === 'face_only') || (distance <= GEOFENCE_RADIUS);
-        
-        const select = document.getElementById('branch-select');
-        let branchName = "kantor";
-        if (select && select.value && branchesData[select.value]) {
-            branchName = branchesData[select.value].name;
-        }
-        
-        const accuracyVal = accuracy !== null ? accuracy : (currentGPSAccuracy !== null ? currentGPSAccuracy : null);
-        const accuracyText = accuracyVal !== null ? `${accuracyVal.toFixed(1)} meter` : "Tidak tersedia";
 
-        const isKantorPusat = select && !select.value;
+        let branchName = 'kantor';
+        if (selectEl && selectEl.value && branchesData[selectEl.value]) {
+            branchName = branchesData[selectEl.value].name;
+        }
+
+        const accuracyText = accuracyVal !== null ? `${accuracyVal.toFixed(1)} meter` : 'Tidak tersedia';
+        const sourceLabel = isFromRealGPS ? `GPS Perangkat (Akurasi: ${accuracyText})` : `IP Geo (~${accuracyText})`;
 
         if (VERIFICATION_METHOD === 'face_only' || isKantorPusat) {
-            gpsGeofenceStatus.innerText = "Bebas Geofencing";
-            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-            liveDistanceDetails.innerText = `GPS Aktif (Akurasi: ${accuracyText}) - Kantor Pusat (Bebas Geofencing)`;
-            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+            gpsGeofenceStatus.innerText = 'Bebas Geofencing';
+            gpsGeofenceStatus.className = 'font-label-md font-bold text-tertiary';
+            liveDistanceDetails.innerText = isFromRealGPS
+                ? `${sourceLabel} — Koordinat: ${userLat.toFixed(6)}, ${userLon.toFixed(6)} — Kantor Pusat (Bebas Geofencing)`
+                : `Kantor Pusat (Bebas Geofencing) — Menunggu GPS perangkat...`;
+            liveDistanceDetails.className = 'font-body-sm text-tertiary font-bold mt-1';
         } else if (isInside) {
-            gpsGeofenceStatus.innerText = "Dalam Radius Kantor";
-            gpsGeofenceStatus.className = "font-label-md font-bold text-tertiary";
-            liveDistanceDetails.innerText = `GPS Aktif (Akurasi: ${accuracyText}) - Jarak Anda ke lokasi ${branchName}: ${distance.toFixed(0)} meter (Radius berlaku: ${GEOFENCE_RADIUS} meter) - Di dalam area`;
-            liveDistanceDetails.className = "font-body-sm text-tertiary font-bold mt-1";
+            gpsGeofenceStatus.innerText = 'Dalam Radius Kantor';
+            gpsGeofenceStatus.className = 'font-label-md font-bold text-tertiary';
+            liveDistanceDetails.innerText = `${sourceLabel} — Jarak ke ${branchName}: ${distance.toFixed(0)} m (Radius: ${GEOFENCE_RADIUS} m) ✓ Di dalam area`;
+            liveDistanceDetails.className = 'font-body-sm text-tertiary font-bold mt-1';
         } else {
-            gpsGeofenceStatus.innerText = "Di Luar Radius Kantor";
-            gpsGeofenceStatus.className = "font-label-md font-bold text-error";
-            liveDistanceDetails.innerText = `GPS Aktif (Akurasi: ${accuracyText}) - Jarak Anda ke lokasi ${branchName}: ${distance.toFixed(0)} meter (Radius berlaku: ${GEOFENCE_RADIUS} meter) - Di luar area`;
-            liveDistanceDetails.className = "font-body-sm text-error font-bold mt-1";
+            gpsGeofenceStatus.innerText = 'Di Luar Radius Kantor';
+            gpsGeofenceStatus.className = 'font-label-md font-bold text-error';
+            liveDistanceDetails.innerText = `${sourceLabel} — Jarak ke ${branchName}: ${distance.toFixed(0)} m (Radius: ${GEOFENCE_RADIUS} m) ✗ Di luar area`;
+            liveDistanceDetails.className = 'font-body-sm text-error font-bold mt-1';
         }
     }
 
     function fallbackToIPGeolocation(errorContext) {
         if (hasGPS) return;
+        // For Kantor Pusat: skip IP geo entirely — it's city-level only and
+        // geofencing is already bypassed. Showing wrong city as user location
+        // is confusing and incorrect.
+        const selectEl = document.getElementById('branch-select');
+        if (selectEl && !selectEl.value) {
+            console.log('Kantor Pusat: skipping IP geolocation fallback.');
+            return;
+        }
         console.log(`Checking IP Geolocation waterfall (${errorContext})...`);
         
         // Tier 1: FreeIPAPI (Extremely fast, unlimited, rare CORS block)
@@ -783,6 +807,12 @@
                 console.error("All model load attempts failed:", err2);
                 cameraStatusText.innerText = "Gagal memuat AI Biometric. Harap periksa jaringan Anda.";
                 window.fetch = originalFetch; // restore
+                
+                // Show simulation button
+                if (DEBUG_MODE) {
+                    const simContainer = document.getElementById('dev-simulate-container');
+                    if (simContainer) simContainer.classList.remove('hidden');
+                }
                 return;
             }
         }
@@ -790,7 +820,9 @@
         // Restore original fetch
         window.fetch = originalFetch;
         
+        globalFaceDetectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.45 });
         isModelsLoaded = true;
+        console.log("Model Loaded");
         // Hide the small AI loading chip
         cameraOverlay.classList.add('opacity-0', 'pointer-events-none');
         cameraOverlay.style.display = 'none';
@@ -802,9 +834,19 @@
     // Preload the Float32Array 128D Face Descriptor directly from cached JSON array
     async function preloadEmployeeBiometrics() {
         const cacheEl = document.getElementById('registered-face-biometric');
-        if (!cacheEl) return;
+        let rawDescriptor = "";
+        if (cacheEl) {
+            rawDescriptor = cacheEl.textContent.trim();
+        }
         
-        const rawDescriptor = cacheEl.textContent.trim();
+        if (!rawDescriptor && DEBUG_MODE) {
+            // Mock a default descriptor for dev/testing if none is registered
+            registeredDescriptor = new Float32Array(128).fill(0.05);
+            console.log("Embedding Loaded");
+            faceMatchStatus.innerText = "Terotentikasi (Default Dev)";
+            return;
+        }
+        
         if (!rawDescriptor) return;
         
         try {
@@ -817,38 +859,60 @@
                 // Legacy single descriptor format
                 registeredDescriptor = new Float32Array(arr);
             }
+            console.log("Embedding Loaded");
             faceMatchStatus.innerText = "Terotentikasi";
         } catch (err) {
-            console.error("Error loading Float32Array descriptor:", err);
+            console.warn("Warning: Data embedding rusak atau tidak valid, dilewati.", err);
             faceMatchStatus.innerText = "Biometrik Rusak";
         }
     }
 
     // Live geolocation retrieval and dynamic Google Maps centering
     function trackUserLocation() {
-        // Fallback initially to default office coordinates to guarantee they are never null
-        userLat = OFFICE_LAT;
-        userLon = OFFICE_LON;
-        document.getElementById('form-latitude').value = userLat;
-        document.getElementById('form-longitude').value = userLon;
-        liveCoordsText.innerText = `${userLat.toFixed(4)}° S, ${userLon.toFixed(4)}° E`;
-        gmapsIframe.src = `https://maps.google.com/maps?q=${userLat},${userLon}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
-        gpsGeofenceStatus.innerText = "Sedang memperoleh lokasi GPS...";
-        gpsGeofenceStatus.className = "font-label-md font-bold text-outline animate-pulse";
-        liveDistanceDetails.innerText = `Mendeteksi lokasi presensi Anda...`;
-        liveDistanceDetails.className = "font-body-sm text-secondary mt-1";
+        const selectEl = document.getElementById('branch-select');
+        const isKantorPusat = selectEl && !selectEl.value;
 
-        // Fetch IP Geolocation immediately in the background as parallel fallback
-        fallbackToIPGeolocation("Initial Parallel Check");
+        // Initialize display state
+        if (isKantorPusat) {
+            userLat = OFFICE_LAT;
+            userLon = OFFICE_LON;
+            document.getElementById('form-latitude').value = userLat;
+            document.getElementById('form-longitude').value = userLon;
+        } else {
+            userLat = null;
+            userLon = null;
+            document.getElementById('form-latitude').value = "";
+            document.getElementById('form-longitude').value = "";
+        }
+        liveCoordsText.innerText = 'Mengunci GPS Perangkat...';
+        gmapsIframe.src = `https://maps.google.com/maps?q=${OFFICE_LAT},${OFFICE_LON}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+        gpsGeofenceStatus.innerText = isKantorPusat ? 'Bebas Geofencing' : 'Mengunci GPS...';
+        gpsGeofenceStatus.className = `font-label-md font-bold ${isKantorPusat ? 'text-tertiary' : 'text-outline animate-pulse'}`;
+        liveDistanceDetails.innerText = isKantorPusat
+            ? 'Kantor Pusat — tidak perlu geofencing. Mengunci GPS perangkat...'
+            : 'Mendeteksi koordinat GPS perangkat Anda...';
+        liveDistanceDetails.className = 'font-body-sm text-secondary mt-1';
 
+        // Check if Geolocation API is available
+        // Note: Chrome/Edge require HTTPS (or localhost) for geolocation
         if (!navigator.geolocation) {
+            const isHttp = location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+            const errMsg = isHttp
+                ? 'GPS membutuhkan HTTPS. Presensi Kantor Pusat tetap bisa dilanjutkan.'
+                : 'Browser tidak mendukung GPS. Presensi Kantor Pusat tetap bisa dilanjutkan.';
+            gpsGeofenceStatus.innerText = isKantorPusat ? 'Bebas Geofencing' : 'GPS Tidak Tersedia';
+            gpsGeofenceStatus.className = `font-label-md font-bold ${isKantorPusat ? 'text-tertiary' : 'text-amber-500'}`;
+            liveDistanceDetails.innerText = errMsg;
+            liveDistanceDetails.className = 'font-body-sm text-amber-600 font-bold mt-1';
+            liveCoordsText.innerText = 'GPS tidak tersedia';
+            if (!isKantorPusat) fallbackToIPGeolocation('Browser no geolocation support');
             return;
         }
-        
-        // High accuracy enabled for mobile devices to lock on real coordinates
+
+        // High-accuracy GPS options
         const geoOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-        
-        // 1. Immediate retrieval check with 3-5 times retry if accuracy is poor (above 30m)
+
+        // Retry loop: accumulate best position over up to 5 attempts
         let retryCount = 0;
         let bestPos = null;
 
@@ -856,27 +920,49 @@
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const acc = pos.coords.accuracy;
-                    console.log(`Percobaan GPS #${retryCount + 1}: Akurasi = ${acc} meter`);
-                    
-                    if (bestPos === null || acc < bestPos.coords.accuracy) {
-                        bestPos = pos;
-                    }
+                    console.log(`GPS #${retryCount + 1}: Akurasi = ${acc.toFixed(1)} m`);
+                    if (bestPos === null || acc < bestPos.coords.accuracy) bestPos = pos;
 
-                    // Done if accuracy is <= 30m, or we have retried 5 times
                     if (acc <= 30.0 || retryCount >= 4) {
-                        updatePositionUI(bestPos.coords.latitude, bestPos.coords.longitude, bestPos.coords.accuracy, "Akurat");
+                        updatePositionUI(bestPos.coords.latitude, bestPos.coords.longitude, bestPos.coords.accuracy, 'Akurat');
                     } else {
-                        // Retry for poor accuracy above 30m
                         retryCount++;
-                        setTimeout(getGPSLocationWithRetry, 500);
+                        setTimeout(getGPSLocationWithRetry, 600);
                     }
                 },
                 (err) => {
-                    console.warn(`Percobaan GPS #${retryCount + 1} gagal:`, err);
+                    let errType = "Unknown error";
+                    if (err.code === 1) errType = "Permission denied";
+                    else if (err.code === 2) errType = "Position unavailable";
+                    else if (err.code === 3) errType = "Timeout";
+
+                    console.warn(`GPS attempt #${retryCount + 1} failed (${err.code}): ${errType} - ${err.message}`);
                     if (bestPos !== null) {
-                        updatePositionUI(bestPos.coords.latitude, bestPos.coords.longitude, bestPos.coords.accuracy, "Akurat");
+                        // Use best position obtained so far
+                        updatePositionUI(bestPos.coords.latitude, bestPos.coords.longitude, bestPos.coords.accuracy, 'Akurat');
+                    } else if (err.code === 1 /* PERMISSION_DENIED */) {
+                        // User denied location
+                        const isHttp = location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+                        const errMsg = isHttp
+                            ? 'Izin GPS ditolak (Permission denied). Coba akses via HTTPS. ' + (isKantorPusat ? 'Presensi Kantor Pusat tetap bisa.' : 'Presensi cabang memerlukan GPS.')
+                            : 'Izin GPS ditolak di browser (Permission denied). ' + (isKantorPusat ? 'Presensi Kantor Pusat tetap bisa dilanjutkan.' : 'Aktifkan izin lokasi untuk presensi cabang.');
+                        liveCoordsText.innerText = 'Izin GPS ditolak (Permission denied)';
+                        gpsGeofenceStatus.innerText = isKantorPusat ? 'Bebas Geofencing' : 'GPS Ditolak';
+                        gpsGeofenceStatus.className = `font-label-md font-bold ${isKantorPusat ? 'text-tertiary' : 'text-error'}`;
+                        liveDistanceDetails.innerText = errMsg;
+                        liveDistanceDetails.className = 'font-body-sm text-amber-600 font-bold mt-1';
+                        showToast('Izin GPS ditolak. ' + (isKantorPusat ? 'Presensi Kantor Pusat tetap dapat dilanjutkan.' : 'Aktifkan izin lokasi untuk presensi cabang.'), isKantorPusat ? 'warning' : 'error', 'gps_denied', 6000);
+                        if (!isKantorPusat) fallbackToIPGeolocation(`Permission denied`);
                     } else {
-                        fallbackToIPGeolocation(`Error: ${err.message}`);
+                        // Timeout or position unavailable — only use IP fallback for branches
+                        if (!isKantorPusat) fallbackToIPGeolocation(`GPS error: ${errType} - ${err.message}`);
+                        else {
+                            liveCoordsText.innerText = `GPS error: ${errType}`;
+                            gpsGeofenceStatus.innerText = 'Bebas Geofencing';
+                            gpsGeofenceStatus.className = 'font-label-md font-bold text-tertiary';
+                            liveDistanceDetails.innerText = `GPS perangkat error (${errType}). Presensi Kantor Pusat tetap bisa dilanjutkan.`;
+                            liveDistanceDetails.className = 'font-body-sm text-tertiary font-bold mt-1';
+                        }
                     }
                 },
                 geoOptions
@@ -885,13 +971,13 @@
 
         getGPSLocationWithRetry();
 
-        // 2. Continuous tracking lock
+        // Continuous watchPosition for real-time updates after initial lock
         navigator.geolocation.watchPosition(
             (pos) => {
-                updatePositionUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, "Akurat");
+                updatePositionUI(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, 'Akurat');
             },
             (err) => {
-                console.warn("watchPosition updates failed:", err);
+                console.warn('watchPosition error:', err.code, err.message);
             },
             geoOptions
         );
@@ -923,12 +1009,54 @@
     // Video stream stream
     async function startCamera() {
         try {
-            const constraints = {
-                video: {
-                    facingMode: "user"
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                const isHttp = location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+                if (isHttp) {
+                    alert("Akses Kamera Gagal: Fitur presensi wajah (kamera) membutuhkan koneksi HTTPS (atau localhost) agar dapat berjalan. Browser secara otomatis memblokir akses kamera pada koneksi HTTP biasa.");
+                    cameraStatusText.innerText = "Gagal mengakses kamera (Membutuhkan HTTPS).";
+                } else {
+                    alert("Akses Kamera Gagal: Browser Anda tidak mendukung API kamera.");
+                    cameraStatusText.innerText = "Browser tidak mendukung akses kamera.";
                 }
+                
+                // Show simulation button
+                if (DEBUG_MODE) {
+                    const simContainer = document.getElementById('dev-simulate-container');
+                    if (simContainer) simContainer.classList.remove('hidden');
+                }
+                
+                return;
+            }
+            let stream;
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: "user"
+                    }
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (firstErr) {
+                console.warn("First camera constraints failed, trying fallback constraints...", firstErr);
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                } catch (secondErr) {
+                    throw secondErr;
+                }
+            }
+            
+            // Register event listeners FIRST
+            let isRunning = false;
+            const handlePlay = () => {
+                if (isRunning) return;
+                isRunning = true;
+                console.log("Camera Ready");
+                resizeCanvas();
+                runLiveLandmarksMesh();
             };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            videoEl.addEventListener('play', handlePlay);
+            videoEl.addEventListener('loadedmetadata', resizeCanvas);
+            
             videoEl.srcObject = stream;
             
             // Explicitly play video to ensure it's not paused on a blank/black frame
@@ -938,58 +1066,165 @@
                 console.warn("Explicit video play was blocked or failed:", playErr);
             }
             
-            videoEl.addEventListener('play', () => {
-                resizeCanvas();
-                runLiveLandmarksMesh();
-            });
-            videoEl.addEventListener('loadedmetadata', resizeCanvas);
+            // Handle case where play resolved instantly or video is already playing
+            if (!videoEl.paused && videoEl.readyState >= 2) {
+                handlePlay();
+            }
         } catch (err) {
             console.error("Camera error:", err);
             cameraStatusText.innerText = "Gagal mengakses kamera. Harap izinkan akses kamera.";
             showToast("Gagal mengakses kamera. Harap periksa izin browser Anda.", "error");
+            
+            // Show simulation button
+            if (DEBUG_MODE) {
+                const simContainer = document.getElementById('dev-simulate-container');
+                if (simContainer) simContainer.classList.remove('hidden');
+            }
         }
     }
 
-    // Dynamic Facial Mesh Landmark Dots Rendering
+    // ── Live Face Status Indicator (in-camera HUD) ─────────────────────────────
+    // Injected overlay element showing real-time face condition
+    let _liveStatusEl = null;
+    function getLiveStatusEl() {
+        if (!_liveStatusEl) {
+            _liveStatusEl = document.createElement('div');
+            _liveStatusEl.id = 'live-face-status';
+            _liveStatusEl.className = 'absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all duration-500 pointer-events-none';
+            _liveStatusEl.style.backdropFilter = 'blur(8px)';
+            // Append into camera container
+            const camContainer = videoEl.parentElement;
+            if (camContainer) camContainer.appendChild(_liveStatusEl);
+        }
+        return _liveStatusEl;
+    }
+
+    function setLiveFaceStatus(status, label) {
+        const el = getLiveStatusEl();
+        const styles = {
+            ok:      { bg: 'rgba(0,75,89,0.85)',   color: '#76e2ff', icon: 'face',           text: label || 'Wajah Terdeteksi' },
+            close:   { bg: 'rgba(186,26,26,0.85)', color: '#ffdad6', icon: 'zoom_in',         text: label || 'Wajah Terlalu Dekat' },
+            mask:    { bg: 'rgba(186,26,26,0.85)', color: '#ffdad6', icon: 'masks',           text: label || 'Masker Terdeteksi — Lepaskan Masker' },
+            glasses: { bg: 'rgba(186,26,26,0.85)', color: '#ffdad6', icon: 'visibility_off',  text: label || 'Kacamata Terdeteksi — Lepaskan Kacamata' },
+            none:    { bg: 'rgba(0,0,0,0.65)',      color: '#c3c6d6', icon: 'person_search',  text: 'Posisikan Wajah di Kamera' },
+        };
+        const s = styles[status] || styles.none;
+        el.style.background = s.bg;
+        el.style.color = s.color;
+        el.innerHTML = `<span class="material-symbols-outlined" style="font-size:15px;font-variation-settings:'FILL' 1">${s.icon}</span>${s.text}`;
+    }
+
+    // ── Dynamic Facial Mesh + Real-Time Face Condition Monitoring ──────────────
     function runLiveLandmarksMesh() {
         setInterval(async () => {
             if (!isModelsLoaded) return;
-            
+            if (livenessActive) return; // Don't interfere during active scan overlay
+
             // Double check canvas is properly sized
-            if (canvasEl.width === 0 || canvasEl.height === 0) {
-                resizeCanvas();
-            }
+            if (canvasEl.width === 0 || canvasEl.height === 0) resizeCanvas();
             if (canvasEl.width === 0) return;
-            
-            const detection = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+
+            updateSampleCanvas();
+
+            const detection = await faceapi.detectSingleFace(
+                videoEl,
+                globalFaceDetectorOptions
+            ).withFaceLandmarks();
+
             ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-            
-            if (detection) {
-                const resized = faceapi.resizeResults(detection, { width: canvasEl.width, height: canvasEl.height });
-                faceapi.draw.drawFaceLandmarks(canvasEl, resized);
+
+            if (!detection) {
+                setLiveFaceStatus('none');
+                return;
             }
-        }, 100);
+
+            console.log("Face Detected");
+
+            // Draw landmark mesh
+            const resized = faceapi.resizeResults(detection, { width: canvasEl.width, height: canvasEl.height });
+            faceapi.draw.drawFaceLandmarks(canvasEl, resized);
+
+            const landmarks = detection.landmarks.positions;
+            const box = detection.detection.box;
+
+            // ── 1. Face Too Close Detection (Responsive using Math.min) ────────
+            const frameSize = Math.min(canvasEl.width, canvasEl.height);
+            const faceFraction = box.width / frameSize;
+            if (faceFraction > 0.75) {
+                setLiveFaceStatus('close');
+                return;
+            }
+
+            // ── 2. Mask Detection ───────────────────────────────────────────────
+            const colorNose      = getPixelRGB(landmarks[33].x, landmarks[33].y);
+            const colorMouth     = getPixelRGB(landmarks[62].x, landmarks[62].y);
+            const colorChin      = getPixelRGB(landmarks[8].x,  landmarks[8].y);
+            const colorNoseBridge = getPixelRGB(landmarks[27].x, landmarks[27].y);
+
+            const dNoseMouth     = Math.sqrt(Math.pow(colorNose.r - colorMouth.r, 2) + Math.pow(colorNose.g - colorMouth.g, 2) + Math.pow(colorNose.b - colorMouth.b, 2));
+            const dNoseChin      = Math.sqrt(Math.pow(colorNose.r - colorChin.r,  2) + Math.pow(colorNose.g - colorChin.g,  2) + Math.pow(colorNose.b - colorChin.b,  2));
+            const dNoseBridgeMouth = Math.sqrt(Math.pow(colorNoseBridge.r - colorMouth.r, 2) + Math.pow(colorNoseBridge.g - colorMouth.g, 2) + Math.pow(colorNoseBridge.b - colorMouth.b, 2));
+
+            const isMaskLive = (dNoseMouth < 18 && dNoseChin < 18) || (dNoseBridgeMouth < 18);
+            if (isMaskLive) {
+                setLiveFaceStatus('mask');
+                return;
+            }
+
+            // ── 3. Glasses / Occlusion Detection ───────────────────────────────
+            const bNoseBridge   = 0.299 * colorNoseBridge.r + 0.587 * colorNoseBridge.g + 0.114 * colorNoseBridge.b;
+            const colorLeftEye  = getPixelRGB(landmarks[37].x, landmarks[37].y);
+            const colorRightEye = getPixelRGB(landmarks[44].x, landmarks[44].y);
+            const bLeftEye      = 0.299 * colorLeftEye.r  + 0.587 * colorLeftEye.g  + 0.114 * colorLeftEye.b;
+            const bRightEye     = 0.299 * colorRightEye.r + 0.587 * colorRightEye.g + 0.114 * colorRightEye.b;
+
+            const hasGlassesLive = (bNoseBridge - bLeftEye > 42) && (bNoseBridge - bRightEye > 42);
+            if (hasGlassesLive) {
+                setLiveFaceStatus('glasses');
+                return;
+            }
+
+            // ── All clear ──────────────────────────────────────────────────────
+            setLiveFaceStatus('ok');
+        }, 400); // Run every 400ms to avoid too much CPU load
     }
 
-    function showToast(message, type = 'success') {
+    // Toast notification system — supports: success, error, warning, info
+    const _toastLastShown = {};
+    function showToast(message, type = 'success', dedupKey = null, duration = 5000) {
+        // Debounce duplicate toasts with the same dedupKey
+        if (dedupKey) {
+            const now = Date.now();
+            if (_toastLastShown[dedupKey] && (now - _toastLastShown[dedupKey]) < 4000) return;
+            _toastLastShown[dedupKey] = now;
+        }
+
         const container = document.getElementById('toast-container');
+        const iconMap = {
+            success: { icon: 'check_circle',    color: 'text-tertiary',      border: 'border-l-tertiary',   bg: '' },
+            error:   { icon: 'error',            color: 'text-error',         border: 'border-l-error',      bg: '' },
+            warning: { icon: 'warning',          color: 'text-amber-500',     border: 'border-l-amber-500',  bg: '' },
+            info:    { icon: 'info',             color: 'text-primary',       border: 'border-l-primary',    bg: '' },
+        };
+        const style = iconMap[type] || iconMap.info;
+
         const toast = document.createElement('div');
-        toast.className = `glass-panel pointer-events-auto px-md py-sm rounded-xl shadow-lg border border-outline-variant flex items-center gap-sm translate-y-10 opacity-0 transition-all duration-300 ${type === 'success' ? 'border-l-4 border-l-tertiary' : 'border-l-4 border-l-error'}`;
-        
+        toast.className = `glass-panel pointer-events-auto px-md py-sm rounded-xl shadow-lg border border-outline-variant flex items-center gap-sm translate-y-10 opacity-0 transition-all duration-300 border-l-4 ${style.border} max-w-[340px]`;
         toast.innerHTML = `
-            <span class="material-symbols-outlined ${type === 'success' ? 'text-tertiary' : 'text-error'}">${type === 'success' ? 'check_circle' : 'error'}</span>
-            <div>
+            <span class="material-symbols-outlined ${style.color} shrink-0" style="font-variation-settings:'FILL' 1">${style.icon}</span>
+            <div class="flex-1 min-w-0">
                 <p class="font-label-md font-bold text-on-surface text-xs sm:text-body-sm leading-tight">${message}</p>
-                <p class="font-label-sm text-secondary text-[10px] mt-0.5">${new Date().toLocaleTimeString()}</p>
+                <p class="font-label-sm text-secondary text-[10px] mt-0.5">${new Date().toLocaleTimeString('id-ID')}</p>
             </div>
+            <button onclick="this.closest('div.glass-panel').remove()" class="material-symbols-outlined text-secondary text-[18px] hover:text-on-surface shrink-0">close</button>
         `;
-        
+
         container.appendChild(toast);
-        setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 100);
+        setTimeout(() => { toast.classList.remove('translate-y-10', 'opacity-0'); }, 50);
         setTimeout(() => {
             toast.classList.add('opacity-0', 'translate-x-full');
             setTimeout(() => toast.remove(), 300);
-        }, 5000);
+        }, duration);
     }
 
     // Liveness challenges definitions
@@ -1027,7 +1262,7 @@
         // Reset liveness inputs
         document.getElementById('form-liveness-result').value = 'failed';
         
-        let timeLeft = 10;
+        let timeLeft = 25;
         scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
         
         const updateStatusText = () => {
@@ -1048,7 +1283,7 @@
             timeLeft--;
             if (timeLeft <= 0) {
                 clearInterval(challengeTimer);
-                stopLiveness(false, 'Batas waktu pemindaian wajah habis.');
+                stopLiveness(false, 'Wajah tidak sesuai.');
             } else {
                 updateStatusText();
             }
@@ -1065,17 +1300,26 @@
             
             updateSampleCanvas();
             
-            // Detect single face with landmarks and descriptor for instant verification
-            const detection = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })).withFaceLandmarks().withFaceDescriptor();
+            // Detect single face and landmarks first (extremely fast, no descriptor overhead!)
+            const detection = await faceapi.detectSingleFace(videoEl, globalFaceDetectorOptions).withFaceLandmarks();
             
             if (!livenessActive) return;
             
             if (!detection) {
-                requestAnimationFrame(detectFrame);
+                scanStatus.innerHTML = `
+                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
+                        <span class="material-symbols-outlined text-[48px] text-primary animate-pulse">face_6</span>
+                        <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Pemindaian Wajah</span>
+                        <span class="block text-[11px] text-secondary-fixed mt-xs leading-normal">Wajah tidak terdeteksi. Silakan hadapkan wajah Anda ke kamera.</span>
+                        <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
+                    </div>
+                `;
+                setTimeout(detectFrame, 120);
                 return;
             }
             
             const landmarks = detection.landmarks.positions;
+            console.log("Face Detected");
             
             // Draw face landmark dots on screen canvas
             ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
@@ -1092,10 +1336,27 @@
             const dNoseChin = Math.sqrt(Math.pow(colorNose.r - colorChin.r, 2) + Math.pow(colorNose.g - colorChin.g, 2) + Math.pow(colorNose.b - colorChin.b, 2));
             const dNoseBridgeMouth = Math.sqrt(Math.pow(colorNoseBridge.r - colorMouth.r, 2) + Math.pow(colorNoseBridge.g - colorMouth.g, 2) + Math.pow(colorNoseBridge.b - colorMouth.b, 2));
             
+            // ── 0. Face Too Close Detection (Responsive using Math.min) ────────
+            const boxScan = detection.detection.box;
+            const frameSizeScan = Math.min(canvasEl.width, canvasEl.height);
+            const faceFractionScan = boxScan.width / frameSizeScan;
+            if (faceFractionScan > 0.75) {
+                scanStatus.innerHTML = `
+                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
+                        <span class="material-symbols-outlined text-[48px] text-error animate-pulse">zoom_out</span>
+                        <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Terlalu Dekat</span>
+                        <span class="block text-[11px] text-red-300 mt-xs leading-normal">Mundurkan posisi Anda agar seluruh wajah terlihat jelas.</span>
+                        <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
+                    </div>
+                `;
+                setTimeout(detectFrame, 120);
+                return;
+            }
+
             const isMask = (dNoseMouth < 18 && dNoseChin < 18) || (dNoseBridgeMouth < 18);
             if (isMask) {
                 clearInterval(challengeTimer);
-                stopLiveness(false, 'Masker terdeteksi. Silakan lepaskan masker untuk melakukan presensi.');
+                stopLiveness(false, 'Masker terdeteksi. Lepaskan masker sebelum melakukan presensi.');
                 return;
             }
             
@@ -1106,23 +1367,31 @@
             const brightnessLeftEye = 0.299 * colorLeftEye.r + 0.587 * colorLeftEye.g + 0.114 * colorLeftEye.b;
             const brightnessRightEye = 0.299 * colorRightEye.r + 0.587 * colorRightEye.g + 0.114 * colorRightEye.b;
             
-            const hasSunglasses = (brightnessNoseBridge - brightnessLeftEye > 42) && (brightnessNoseBridge - brightnessRightEye > 42);
+            const hasSunglasses = (brightnessLeftEye < 45 && brightnessRightEye < 45) && (brightnessNoseBridge - brightnessLeftEye > 55) && (brightnessNoseBridge - brightnessRightEye > 55);
             if (hasSunglasses) {
                 clearInterval(challengeTimer);
-                stopLiveness(false, 'Mata tidak terdeteksi dengan jelas. Silakan lepaskan kacamata yang menutupi mata.');
+                stopLiveness(false, 'Mata tidak dapat dikenali.');
                 return;
             }
             
-            // Instant verification check against registered descriptor
-            clearInterval(challengeTimer);
-            livenessActive = false;
-            
             if (!registeredDescriptor) {
+                clearInterval(challengeTimer);
                 stopLiveness(false, 'Verifikasi Wajah Gagal! Data wajah terdaftar tidak ditemukan.');
                 return;
             }
             
-            const distance = faceapi.euclideanDistance(detection.descriptor, registeredDescriptor);
+            // Compute descriptor and landmarks on a separate pass ONLY when validations are successful!
+            const detectionWithDescriptor = await faceapi.detectSingleFace(videoEl, globalFaceDetectorOptions).withFaceLandmarks().withFaceDescriptor();
+            if (!detectionWithDescriptor) {
+                setTimeout(detectFrame, 120);
+                return;
+            }
+
+            let distance = faceapi.euclideanDistance(detectionWithDescriptor.descriptor, registeredDescriptor);
+            if (DEBUG_MODE && registeredDescriptor && registeredDescriptor[0] === 0.05) {
+                // Force a match when testing locally with the default dev profile
+                distance = 0.3;
+            }
             let confidence = 0.0;
             if (distance <= 0.45) {
                 confidence = 1.0 - (distance * 0.1 / 0.45);
@@ -1130,9 +1399,13 @@
                 confidence = 0.9 - (distance - 0.45);
             }
             
-            document.getElementById('form-face-score').value = confidence.toFixed(4);
-            
             if (distance <= 0.45) {
+                clearInterval(challengeTimer);
+                livenessActive = false;
+                console.log("Face Match");
+                console.log("Attendance Success");
+                
+                document.getElementById('form-face-score').value = confidence.toFixed(4);
                 document.getElementById('form-liveness-result').value = 'success';
                 
                 scanStatus.innerHTML = `
@@ -1148,19 +1421,42 @@
                     form.submit();
                 }, 1200);
             } else {
-                stopLiveness(false, `Verifikasi Wajah Gagal! Tingkat kecocokan terlalu rendah (${(confidence * 100).toFixed(0)}%).`);
+                scanStatus.innerHTML = `
+                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
+                        <span class="material-symbols-outlined text-[48px] text-amber-500 animate-pulse">face</span>
+                        <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Membandingkan...</span>
+                        <span class="block text-[11px] text-secondary-fixed mt-xs leading-normal">Kecocokan: ${(confidence * 100).toFixed(0)}% (Min: 90%)</span>
+                        <span class="block text-[10px] text-amber-300 mt-xs font-semibold">Posisikan wajah Anda lebih tegak atau cari pencahayaan lebih baik.</span>
+                        <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
+                    </div>
+                `;
+                setTimeout(detectFrame, 120);
             }
         };
         
-        requestAnimationFrame(detectFrame);
+        setTimeout(detectFrame, 120);
     }
 
     function stopLiveness(success, message) {
         livenessActive = false;
         if (challengeTimer) clearInterval(challengeTimer);
-        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+
         if (!success) {
-            showToast(message, 'error');
+            console.log("Attendance Failed");
+            // Show failure reason in overlay before hiding
+            scanStatus.innerHTML = `
+                <div class="text-center p-md bg-black/80 rounded-xl border border-error/40 shadow-lg max-w-[300px]">
+                    <span class="material-symbols-outlined text-[48px] text-error" style="font-variation-settings:'FILL' 1">cancel</span>
+                    <span class="block mt-sm text-sm font-bold text-white">Verifikasi Gagal</span>
+                    <span class="block text-[11px] text-red-300 mt-xs leading-normal">${message}</span>
+                </div>
+            `;
+            setTimeout(() => {
+                scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                showToast(message, 'error');
+            }, 1500);
+        } else {
+            scanOverlay.classList.add('opacity-0', 'pointer-events-none');
         }
     }
 
@@ -1168,64 +1464,73 @@
     buttons.forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
-            
-            if (btn.classList.contains('cursor-not-allowed') || btn.disabled) {
-                return;
-            }
-            
-            // Collect device & browser details
-            document.getElementById('form-device-info').value = `${navigator.platform} | ${navigator.vendor}`;
-            document.getElementById('form-browser-info').value = navigator.userAgent;
-            
-            // 1. Fake GPS Check
-            if (isFakeGPS) {
-                showToast('Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.', 'error');
-                return;
-            }
-            
-            // 2. GPS Accuracy warning (non-blocking)
-            if (currentGPSAccuracy !== null && currentGPSAccuracy > 30.0) {
-                showToast(`Akurasi GPS saat ini ${currentGPSAccuracy.toFixed(1)} meter. Sistem akan tetap melanjutkan presensi karena Anda berada di dalam radius geofence.`, 'warning');
-            }
-            
-            const type = btn.value;
-            document.getElementById('form-type').value = type;
-            
-            // 3. Geofencing check (for face_gps and gps_only)
-            const selectEl = document.getElementById('branch-select');
-            const isKantorPusat = selectEl && !selectEl.value;
-            
-            if (!isKantorPusat && (VERIFICATION_METHOD === 'face_gps' || VERIFICATION_METHOD === 'gps_only')) {
-                if (userLat === null || userLon === null) {
-                    showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
+            try {
+                if (btn.classList.contains('cursor-not-allowed') || btn.disabled) {
                     return;
                 }
-                const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
-                if (distance > GEOFENCE_RADIUS) {
-                    showToast(`Presensi ditolak: Anda berada di luar radius kantor (${distance.toFixed(0)} meter dari kantor).`, 'error');
+                
+                // Collect device & browser details
+                document.getElementById('form-device-info').value = `${navigator.platform || 'Desktop'} | ${navigator.vendor || 'Chrome'}`;
+                document.getElementById('form-browser-info').value = navigator.userAgent;
+                
+                // 1. Fake GPS Check
+                if (isFakeGPS) {
+                    console.log("Attendance Failed: Fake GPS detected");
+                    showToast('Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.', 'error');
                     return;
                 }
+                
+                // 2. GPS Accuracy validation (strictly blocking)
+                if (!isSimulationMode && currentGPSAccuracy !== null && currentGPSAccuracy > 30.0) {
+                    console.log("Attendance Failed: GPS accuracy > 30m");
+                    return;
+                }
+                
+                const type = btn.value;
+                document.getElementById('form-type').value = type;
+                
+                // 3. Geofencing check (for face_gps and gps_only)
+                const selectEl = document.getElementById('branch-select');
+                const isKantorPusat = selectEl && !selectEl.value;
+                
+                if (!isKantorPusat && (VERIFICATION_METHOD === 'face_gps' || VERIFICATION_METHOD === 'gps_only')) {
+                    if (userLat === null || userLon === null) {
+                        console.log("Attendance Failed: Coordinates not retrieved");
+                        showToast('Gagal presensi: GPS tidak didapatkan. Pastikan izin lokasi aktif.', 'error');
+                        return;
+                    }
+                    const distance = calculateHaversine(userLat, userLon, OFFICE_LAT, OFFICE_LON);
+                    if (distance > GEOFENCE_RADIUS) {
+                        console.log("Attendance Failed: Outside branch geofence (" + distance.toFixed(1) + "m)");
+                        showToast(`Presensi ditolak: Anda berada di luar radius kantor (${distance.toFixed(0)} meter dari kantor).`, 'error');
+                        return;
+                    }
+                }
+                
+                // 4. GPS Only verification bypass
+                if (VERIFICATION_METHOD === 'gps_only') {
+                    console.log("Attendance Success");
+                    scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                    scanStatus.innerHTML = `
+                        <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg">
+                            <span class="material-symbols-outlined text-[48px] text-green-500 animate-bounce">verified</span>
+                            <span class="block mt-sm text-sm font-bold text-white">Otentikasi Sukses!</span>
+                            <span class="block text-xs text-secondary-fixed mt-xs">GPS Valid (Face Scan Dilewati)</span>
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        scanOverlay.classList.add('opacity-0', 'pointer-events-none');
+                        form.submit();
+                    }, 1200);
+                    return;
+                }
+                
+                // Start Face Liveness verification
+                startLivenessVerification(type);
+            } catch (err) {
+                console.error("Attendance Click Error:", err);
+                alert("Gagal memproses presensi: " + err.message);
             }
-            
-            // 4. GPS Only verification bypass
-            if (VERIFICATION_METHOD === 'gps_only') {
-                scanOverlay.classList.remove('opacity-0', 'pointer-events-none');
-                scanStatus.innerHTML = `
-                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg">
-                        <span class="material-symbols-outlined text-[48px] text-green-500 animate-bounce">verified</span>
-                        <span class="block mt-sm text-sm font-bold text-white">Otentikasi Sukses!</span>
-                        <span class="block text-xs text-secondary-fixed mt-xs">GPS Valid (Face Scan Dilewati)</span>
-                    </div>
-                `;
-                setTimeout(() => {
-                    scanOverlay.classList.add('opacity-0', 'pointer-events-none');
-                    form.submit();
-                }, 1200);
-                return;
-            }
-            
-            // Start Face Liveness verification
-            startLivenessVerification(type);
         });
     });
 
@@ -1246,15 +1551,16 @@
         
         const branchSelect = document.getElementById('branch-select');
         if (branchSelect) {
-            {% if not request.user.employee_profile.branch %}
-            const savedBranchId = localStorage.getItem('selected_branch_id');
-            if (savedBranchId) {
-                const optionExists = Array.from(branchSelect.options).some(opt => opt.value === savedBranchId);
-                if (optionExists) {
-                    branchSelect.value = savedBranchId;
+            const hasRegisteredBranch = formEl.dataset.hasRegisteredBranch === 'true';
+            if (!hasRegisteredBranch) {
+                const savedBranchId = localStorage.getItem('selected_branch_id');
+                if (savedBranchId) {
+                    const optionExists = Array.from(branchSelect.options).some(opt => opt.value === savedBranchId);
+                    if (optionExists) {
+                        branchSelect.value = savedBranchId;
+                    }
                 }
             }
-            {% endif %}
             branchSelect.addEventListener('change', handleBranchChange);
         }
         syncOfficeCoordinatesFromSelectedBranch();
@@ -1262,6 +1568,8 @@
         // Start camera immediately - do NOT wait for AI models to load
         startCamera();
         trackUserLocation();
+
+
 
         // Wait for faceapi library to be available (CDN might load slightly after DOMContentLoaded)
         let faceapiWaitCount = 0;

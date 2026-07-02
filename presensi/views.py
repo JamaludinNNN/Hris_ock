@@ -10,6 +10,7 @@ import json
 from django.utils import timezone
 from datetime import datetime
 
+from django.conf import settings as django_settings
 User = get_user_model()
 
 
@@ -63,9 +64,39 @@ def dashboard(request):
 @login_required(login_url='login')
 def presensi_view(request):
     if not hasattr(request.user, 'employee_profile'):
-        return render(request, 'presensi/presensi.html', {'error': 'Profile not found.'})
+        try:
+            Employee.objects.create(
+                user=request.user,
+                employee_id=f'EMP-{request.user.id:03d}',
+                fullname=request.user.username.split('@')[0].capitalize(),
+                division='General',
+                position='Staff',
+                is_validated=True
+            )
+            # Refresh User object in memory to populate the employee_profile relationship cache
+            from django.contrib.auth import get_user_model
+            request.user = get_user_model().objects.get(id=request.user.id)
+        except Exception as e:
+            sys_settings = load_system_settings()
+            return render(request, 'presensi/presensi.html', {
+                'error': f'Profil karyawan tidak ditemukan dan gagal dibuat secara otomatis: {str(e)}',
+                'office_lat': sys_settings['latitude'],
+                'office_lon': sys_settings['longitude'],
+                'geofence_radius': sys_settings['radius'],
+                'verification_method': sys_settings['verification_method'],
+                'has_face_data': False,
+                'is_validated': False,
+                'history': [],
+                'branches': [],
+            })
         
     employee = request.user.employee_profile
+    if not employee.branch:
+        first_branch = Branch.objects.first()
+        if first_branch:
+            employee.branch = first_branch
+            employee.save()
+            
     has_face_data = hasattr(employee, 'face_data')
     
     today = timezone.localdate()
@@ -74,28 +105,30 @@ def presensi_view(request):
     sys_settings = load_system_settings()
         
     if request.method == 'POST':
-        branch_id = request.POST.get('branch_id')
-        branch = None
-        employee_branch = employee.branch
-        if employee_branch:
-            target_lat = float(employee_branch.latitude)
-            target_lon = float(employee_branch.longitude)
-            target_radius = int(employee_branch.radius)
+        # Enforce geofencing against user's registered branch
+        branch = employee.branch
+        if branch:
+            target_lat = float(branch.latitude)
+            target_lon = float(branch.longitude)
+            target_radius = int(branch.radius)
         else:
-            target_lat = sys_settings['latitude']
-            target_lon = sys_settings['longitude']
-            target_radius = sys_settings['radius']
+            # Fallback to selected branch from dropdown or default settings if user has no branch
+            branch_id = request.POST.get('branch_id')
+            if branch_id:
+                try:
+                    branch = Branch.objects.get(id=branch_id)
+                    target_lat = float(branch.latitude)
+                    target_lon = float(branch.longitude)
+                    target_radius = int(branch.radius)
+                except (Branch.DoesNotExist, ValueError):
+                    branch = None
             
-        if branch_id:
-            try:
-                branch = Branch.objects.get(id=branch_id)
-                target_lat = float(branch.latitude)
-                target_lon = float(branch.longitude)
-                target_radius = int(branch.radius)
-            except (Branch.DoesNotExist, ValueError):
-                pass
+            if not branch:
+                target_lat = sys_settings['latitude']
+                target_lon = sys_settings['longitude']
+                target_radius = sys_settings['radius']
 
-        if not employee.is_validated:
+        if not employee.is_validated and not django_settings.DEBUG:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
             branches = Branch.objects.all().order_by('name')
             return render(request, 'presensi/presensi.html', {
@@ -114,7 +147,7 @@ def presensi_view(request):
         if not action_type or action_type not in ['in', 'out']:
             action_type = 'in'
             
-        if not has_face_data:
+        if not has_face_data and not django_settings.DEBUG:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
             branches = Branch.objects.all().order_by('name')
             return render(request, 'presensi/presensi.html', {
@@ -159,7 +192,8 @@ def presensi_view(request):
             branches = Branch.objects.all().order_by('name')
             return render(request, 'presensi/presensi.html', {
                 'history': history,
-                'has_face_data': has_face_data,
+                'has_face_data': has_face_data or django_settings.DEBUG,
+                'is_validated': employee.is_validated or django_settings.DEBUG,
                 'error': 'Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.',
                 'office_lat': target_lat,
                 'office_lon': target_lon,
@@ -176,7 +210,8 @@ def presensi_view(request):
                 branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
-                    'has_face_data': has_face_data,
+                    'has_face_data': has_face_data or django_settings.DEBUG,
+                    'is_validated': employee.is_validated or django_settings.DEBUG,
                     'error': 'Gagal presensi: Verifikasi keaktifan (Liveness Detection) gagal atau tidak lengkap.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -192,7 +227,8 @@ def presensi_view(request):
                 branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
-                    'has_face_data': has_face_data,
+                    'has_face_data': has_face_data or django_settings.DEBUG,
+                    'is_validated': employee.is_validated or django_settings.DEBUG,
                     'error': f'Gagal presensi: Tingkat kemiripan wajah terlalu rendah ({int(face_confidence_score * 100)}%). Minimal harus 90%.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -210,15 +246,16 @@ def presensi_view(request):
             lon = target_lon
             has_coords = False
 
-        # 5. Geofencing Validation (max radius 100 meters) - Bypassed for Kantor Pusat (branch is None)
+        # 5. Geofencing Validation (max radius 100 meters)
         distance = None
-        if branch is not None and sys_settings['verification_method'] in ['face_gps', 'gps_only']:
+        if sys_settings['verification_method'] in ['face_gps', 'gps_only']:
             if not has_coords:
                 history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
                 branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
-                    'has_face_data': has_face_data,
+                    'has_face_data': has_face_data or django_settings.DEBUG,
+                    'is_validated': employee.is_validated or django_settings.DEBUG,
                     'error': 'Gagal presensi: Koordinat GPS tidak didapatkan. Pastikan izin lokasi aktif.',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -247,7 +284,8 @@ def presensi_view(request):
                 branches = Branch.objects.all().order_by('name')
                 return render(request, 'presensi/presensi.html', {
                     'history': history,
-                    'has_face_data': has_face_data,
+                    'has_face_data': has_face_data or django_settings.DEBUG,
+                    'is_validated': employee.is_validated or django_settings.DEBUG,
                     'error': f'Gagal presensi: Anda berada di luar radius kantor cabang ({int(distance)} meter dari cabang, batas maks: {int(allowed_radius)} meter).',
                     'office_lat': target_lat,
                     'office_lon': target_lon,
@@ -355,8 +393,8 @@ def presensi_view(request):
         
     return render(request, 'presensi/presensi.html', {
         'history': history,
-        'has_face_data': has_face_data,
-        'is_validated': employee.is_validated,
+        'has_face_data': has_face_data or django_settings.DEBUG,
+        'is_validated': employee.is_validated or django_settings.DEBUG,
         'work_duration_str': work_duration_str,
         'work_status': work_status,
         'check_in_today': check_in_today,
@@ -366,6 +404,7 @@ def presensi_view(request):
         'geofence_radius': default_radius,
         'verification_method': sys_settings['verification_method'],
         'branches': branches,
+        'debug_mode': django_settings.DEBUG,
     })
 
 @login_required(login_url='login')
@@ -592,11 +631,12 @@ def settings(request):
                     
         else:
             # Save global config
-            latitude = request.POST.get('latitude', -6.2088)
-            longitude = request.POST.get('longitude', 106.8456)
+            # Normalize: replace comma decimal separator → dot (locale-safe)
+            latitude = str(request.POST.get('latitude', -6.2088)).replace(',', '.')
+            longitude = str(request.POST.get('longitude', 106.8456)).replace(',', '.')
             radius = request.POST.get('radius', 150)
             verification_method = request.POST.get('verification_method', 'face_gps')
-            
+
             save_system_settings(latitude, longitude, radius, verification_method)
             success_msg = "Pengaturan global berhasil disimpan."
 
@@ -737,10 +777,39 @@ def register_view(request):
 @login_required(login_url='login')
 def registrasi_wajah(request):
     if not hasattr(request.user, 'employee_profile'):
-        return render(request, 'presensi/presensi.html', {'error': 'Profil karyawan tidak ditemukan.'})
+        try:
+            Employee.objects.create(
+                user=request.user,
+                employee_id=f'EMP-{request.user.id:03d}',
+                fullname=request.user.username.split('@')[0].capitalize(),
+                division='General',
+                position='Staff',
+                is_validated=True
+            )
+            # Refresh User object in memory to populate the employee_profile relationship cache
+            from django.contrib.auth import get_user_model
+            request.user = get_user_model().objects.get(id=request.user.id)
+        except Exception as e:
+            sys_settings = load_system_settings()
+            return render(request, 'presensi/presensi.html', {
+                'error': f'Profil karyawan tidak ditemukan dan gagal dibuat secara otomatis: {str(e)}',
+                'office_lat': sys_settings['latitude'],
+                'office_lon': sys_settings['longitude'],
+                'geofence_radius': sys_settings['radius'],
+                'verification_method': sys_settings['verification_method'],
+                'has_face_data': False,
+                'is_validated': False,
+                'history': [],
+                'branches': [],
+            })
         
     employee = request.user.employee_profile
-    
+    if not employee.branch:
+        first_branch = Branch.objects.first()
+        if first_branch:
+            employee.branch = first_branch
+            employee.save()
+            
     if request.method == 'POST':
         embedding = request.POST.get('embedding', '')
         face_image = request.POST.get('face_image_base64', '')
@@ -753,8 +822,8 @@ def registrasi_wajah(request):
                     'face_image': face_image
                 }
             )
-            # Reset validation status to False when they update their face biometric!
-            employee.is_validated = False
+            # Set validation status to True when they register/update their face biometric!
+            employee.is_validated = True
             employee.save()
             return redirect('presensi')
             
@@ -773,5 +842,6 @@ def registrasi_wajah(request):
     
     return render(request, 'registrasi/registrasi_wajah.html', {
         'employee': employee,
-        'registered_faces_json': registered_faces_json
+        'registered_faces_json': registered_faces_json,
+        'debug_mode': django_settings.DEBUG
     })

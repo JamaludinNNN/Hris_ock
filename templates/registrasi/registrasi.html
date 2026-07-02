@@ -243,6 +243,10 @@
                     <div id="camera-status-overlay" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-sm transition-all duration-300 z-20">
                         <span class="material-symbols-outlined animate-spin text-white text-[48px]">sync</span>
                         <p class="text-white font-label-md tracking-wide text-center px-sm" id="camera-status-text">Memuat Model Kecerdasan Buatan (AI)...</p>
+                        <button type="button" id="btn-simulate-dev" class="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-xs shadow-lg flex items-center gap-1 transition-all active:scale-95 hidden">
+                            <span class="material-symbols-outlined text-[16px]">bug_report</span>
+                            Simulasikan Kamera (Dev Mode)
+                        </button>
                     </div>
 
                     <!-- Duplication or Verification Failure Error Overlay -->
@@ -259,7 +263,7 @@
                 </div>
 
                 <!-- Action Bar -->
-                <form id="registration-form" method="POST" action="{% url 'registrasi' %}" class="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm w-full gap-md">
+                <form id="registration-form" method="POST" action="{% url 'registrasi' %}" class="flex flex-col md:flex-row justify-between items-stretch md:items-center bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm w-full gap-md" data-debug-mode="{% if debug_mode %}true{% else %}false{% endif %}">
                     {% csrf_token %}
                     <input type="hidden" name="embedding" id="face-embedding">
                     <input type="hidden" name="face_image_base64" id="face-image-base64">
@@ -321,6 +325,8 @@
     let canvasEl = document.getElementById('overlay-canvas');
     let ctx = canvasEl.getContext('2d');
     let cachedDescriptors = [];
+    const formEl = document.getElementById('registration-form');
+    const DEBUG_MODE = formEl ? (formEl.dataset.debugMode === 'true') : false;
 
     // State machine variables
     let registrationState = 'idle'; // 'idle', 'scanning_front', 'scanning_left', 'scanning_right', 'completed'
@@ -352,6 +358,7 @@
             await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
             
             isModelsLoaded = true;
+            console.log("Model Loaded");
             statusOverlay.classList.add('opacity-0', 'pointer-events-none');
             
             progressBar.style.width = '10%';
@@ -362,6 +369,12 @@
         } catch (err) {
             console.error("Error loading face-api models:", err);
             statusText.innerText = "Gagal memuat modul kecerdasan buatan (Coba refresh).";
+            
+            // Show simulation button
+            if (DEBUG_MODE) {
+                const simBtn = document.getElementById('btn-simulate-dev');
+                if (simBtn) simBtn.classList.remove('hidden');
+            }
         }
     }
 
@@ -388,11 +401,12 @@
                         descriptors: descriptors
                     });
                 } catch(e) {
-                    console.error("Old face data or parsing error for profile:", profile.name);
+                    console.warn("Old face data or parsing error for profile:", profile.name, e);
                 }
             }
+            console.log("Embedding Loaded");
         } catch (err) {
-            console.error("Error parsing preloaded faces:", err);
+            console.warn("Error parsing preloaded faces:", err);
         }
     }
 
@@ -406,12 +420,54 @@
     // Camera initializer
     async function startCamera() {
         try {
-            const constraints = {
-                video: {
-                    facingMode: "user"
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                const isHttp = location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+                if (isHttp) {
+                    alert("Akses Kamera Gagal: Fitur pemindai wajah (kamera) membutuhkan koneksi HTTPS (atau localhost) agar dapat berjalan. Browser secara otomatis memblokir akses kamera pada koneksi HTTP biasa.");
+                    statusText.innerText = "Gagal mengakses kamera (Membutuhkan HTTPS).";
+                } else {
+                    alert("Akses Kamera Gagal: Browser Anda tidak mendukung API kamera.");
+                    statusText.innerText = "Browser tidak mendukung akses kamera.";
                 }
+                
+                // Show simulation button
+                if (DEBUG_MODE) {
+                    const simBtn = document.getElementById('btn-simulate-dev');
+                    if (simBtn) simBtn.classList.remove('hidden');
+                }
+                
+                return;
+            }
+            let stream;
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: "user"
+                    }
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (firstErr) {
+                console.warn("First camera constraints failed, trying fallback constraints...", firstErr);
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                } catch (secondErr) {
+                    throw secondErr;
+                }
+            }
+            
+            // Register event listeners FIRST
+            let isRunning = false;
+            const handlePlay = () => {
+                if (isRunning) return;
+                isRunning = true;
+                console.log("Camera Ready");
+                resizeCanvas();
+                runLiveFaceDetection();
             };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            videoEl.addEventListener('play', handlePlay);
+            videoEl.addEventListener('loadedmetadata', resizeCanvas);
+            
             videoEl.srcObject = stream;
             
             // Explicitly play video to ensure it's not paused on a blank/black frame
@@ -421,16 +477,68 @@
                 console.warn("Explicit video play was blocked or failed:", playErr);
             }
             
-            videoEl.addEventListener('play', () => {
-                resizeCanvas();
-                runLiveFaceDetection();
-            });
-            videoEl.addEventListener('loadedmetadata', resizeCanvas);
+            // Handle case where play resolved instantly or video is already playing
+            if (!videoEl.paused && videoEl.readyState >= 2) {
+                handlePlay();
+            }
         } catch (err) {
             console.error("Camera access denied:", err);
             alert("Harap berikan izin akses webcam agar sensor biometrik dapat mendeteksi kontur wajah.");
+            
+            // Show simulation button
+            if (DEBUG_MODE) {
+                const simBtn = document.getElementById('btn-simulate-dev');
+                if (simBtn) simBtn.classList.remove('hidden');
+            }
         }
     }
+
+    let isSimulationMode = false;
+    document.getElementById('btn-simulate-dev').addEventListener('click', () => {
+        if (!employeeSelector.value) {
+            alert("Pilih profil karyawan terlebih dahulu sebelum memulai simulasi.");
+            return;
+        }
+        
+        isSimulationMode = true;
+        employeeSelector.disabled = true;
+        
+        // Hide overlay
+        statusOverlay.classList.add('opacity-0', 'pointer-events-none');
+        
+        // Mock descriptor (128 floats)
+        const mockDescriptor = Array.from({ length: 128 }, () => Math.random() * 0.1);
+        frontDescriptor = mockDescriptor;
+        leftDescriptor = mockDescriptor;
+        rightDescriptor = mockDescriptor;
+        
+        // Save values in hidden forms
+        const embeddingsArray = [
+            mockDescriptor,
+            mockDescriptor,
+            mockDescriptor
+        ];
+        document.getElementById('face-embedding').value = JSON.stringify(embeddingsArray);
+        
+        const mockBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+        document.getElementById('face-image-base64').value = mockBase64;
+        
+        previewContainer.innerHTML = `<img src="${mockBase64}" class="w-full h-full object-cover rounded-lg">`;
+        
+        // Enable Save button
+        saveBtn.disabled = false;
+        saveBtn.className = "px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm active:scale-95 hover:bg-primary-container transition-all cursor-pointer";
+        
+        // Complete registration UI
+        for (let i = 1; i <= 3; i++) {
+            markStepCompleted(i);
+        }
+        progressBar.style.width = '100%';
+        progressText.innerText = 'Simulasi Selesai 100%';
+        registrationState = 'completed';
+        
+        updateInstruction('verified', 'Simulasi Selesai', 'Pendaftaran wajah disimulasikan. Silakan simpan data.');
+    });
 
     // Pixel reading setup for mask/sunglasses heuristics
     const sampleCanvas = document.createElement('canvas');
@@ -476,6 +584,7 @@
                 ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
                 
                 if (faces.length > 0) {
+                    console.log("Face Detected");
                     const resized = faceapi.resizeResults(faces, { width: canvasEl.width, height: canvasEl.height });
                     faceapi.draw.drawFaceLandmarks(canvasEl, resized);
                 }
@@ -687,8 +796,8 @@
             flashCamera();
             markStepCompleted(1);
             markStepActive(2);
-            progressBar.style.width = '20%';
-            progressText.innerText = 'Tahap 2/5 (Wajah Kiri)';
+            progressBar.style.width = '40%';
+            progressText.innerText = 'Tahap 2/3 (Wajah Kiri)';
             registrationState = 'scanning_left';
         }
         else if (registrationState === 'scanning_left') {
@@ -698,7 +807,7 @@
                 updateInstruction('warning', 'Kurang Fokus', 'Pencahayaan kurang / wajah blur, pastikan wajah Anda fokus.');
                 return;
             }
-            if (turnRatio >= 0.45) {
+            if (turnRatio < 1.5) {
                 return;
             }
             
@@ -706,8 +815,8 @@
             flashCamera();
             markStepCompleted(2);
             markStepActive(3);
-            progressBar.style.width = '40%';
-            progressText.innerText = 'Tahap 3/5 (Wajah Kanan)';
+            progressBar.style.width = '70%';
+            progressText.innerText = 'Tahap 3/3 (Wajah Kanan)';
             registrationState = 'scanning_right';
         }
         else if (registrationState === 'scanning_right') {
@@ -717,7 +826,7 @@
                 updateInstruction('warning', 'Kurang Fokus', 'Pencahayaan kurang / wajah blur, pastikan wajah Anda fokus.');
                 return;
             }
-            if (turnRatio <= 2.2) {
+            if (turnRatio > 0.65) {
                 return;
             }
             
@@ -807,9 +916,19 @@
         if (desc) desc.innerText = 'Belum dipindai.';
     }
 
-    function startBiometricCapture() {
+    async function startBiometricCapture() {
         if (!employeeSelector.value) {
             alert("Pilih profil karyawan terlebih dahulu sebelum memulai pemindaian biometrik.");
+            return;
+        }
+
+        // Check webcam stream is active
+        if (!videoEl.srcObject) {
+            await startCamera();
+        }
+
+        if (!videoEl.srcObject) {
+            alert('Gagal mengakses kamera Anda. Harap berikan izin akses kamera.');
             return;
         }
 
@@ -857,15 +976,29 @@
         employeeSelector.disabled = false;
     }
 
-    // Bootstrapping
     document.addEventListener('DOMContentLoaded', () => {
-        loadModels();
         startCamera();
+
+        // Wait for faceapi library to be available (CDN might load slightly after DOMContentLoaded)
+        let faceapiWaitCount = 0;
+        const waitForFaceApi = setInterval(() => {
+            faceapiWaitCount++;
+            if (typeof faceapi !== 'undefined') {
+                clearInterval(waitForFaceApi);
+                loadModels();
+            } else if (faceapiWaitCount >= 20) {
+                // 10 seconds passed, faceapi library itself never loaded
+                clearInterval(waitForFaceApi);
+                statusText.innerText = "Gagal mengunduh library AI. Coba refresh.";
+                console.error("faceapi library could not be loaded from CDN.");
+            }
+        }, 500);
 
         // Re-enable employee selector on form submit so it gets sent in the POST request
         const formEl = document.getElementById('registration-form');
         if (formEl) {
             formEl.addEventListener('submit', () => {
+                console.log("Embedding Saved");
                 employeeSelector.disabled = false;
             });
         }

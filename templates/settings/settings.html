@@ -150,11 +150,11 @@
                     {% csrf_token %}
                     <div>
                         <label class="block font-label-md text-on-surface-variant mb-xs">Latitude Kantor Pusat</label>
-                        <input type="text" name="latitude" value="{{ latitude }}" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                        <input type="text" name="latitude" id="input-latitude" value="{{ latitude|floatformat:8 }}" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
                     </div>
                     <div>
                         <label class="block font-label-md text-on-surface-variant mb-xs">Longitude Kantor Pusat</label>
-                        <input type="text" name="longitude" value="{{ longitude }}" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                        <input type="text" name="longitude" id="input-longitude" value="{{ longitude|floatformat:8 }}" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
                     </div>
                     <div class="flex justify-end mt-xs">
                         <button type="button" id="get-current-location-btn" class="flex items-center gap-xs text-xs font-semibold text-primary hover:text-primary-container transition-all active:scale-95">
@@ -312,59 +312,72 @@
         const form = document.getElementById('global-config-form');
         if (!form) return;
         
-        const latInput = form.querySelector('input[name="latitude"]');
-        const lonInput = form.querySelector('input[name="longitude"]');
+        // Gunakan ID untuk mencari input (lebih robust dari querySelector)
+        const latInput = document.getElementById('input-latitude');
+        const lonInput = document.getElementById('input-longitude');
         const radInput = form.querySelector('input[name="radius"]');
-        
-        const initialLat = parseFloat(latInput.value) || -6.2088;
-        const initialLon = parseFloat(lonInput.value) || 106.8456;
+
+        // Normalisasi: ganti koma lokal ke titik sebelum parseFloat
+        // (LANGUAGE_CODE='id' bisa menyebabkan Django render koma desimal)
+        function safeParseFloat(val) {
+            if (!val) return NaN;
+            return parseFloat(String(val).replace(',', '.'));
+        }
+
+        const initialLat = safeParseFloat(latInput.value) || -6.2088;
+        const initialLon = safeParseFloat(lonInput.value) || 106.8456;
         const initialRad = parseInt(radInput.value) || 150;
-        
+
         const map = L.map('settings-map').setView([initialLat, initialLon], 16);
-        
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        
+
         const marker = L.marker([initialLat, initialLon], {
             draggable: true
         }).addTo(map);
-        
+
         const circle = L.circle([initialLat, initialLon], {
             color: '#0c56d0',
             fillColor: '#0c56d0',
             fillOpacity: 0.15,
             radius: initialRad
         }).addTo(map);
-        
+
         function updateCoords(lat, lng) {
+            // Simpan dengan presisi penuh, selalu pakai titik desimal
             latInput.value = lat;
             lonInput.value = lng;
             marker.setLatLng([lat, lng]);
             circle.setLatLng([lat, lng]);
+            map.setView([lat, lng], Math.max(map.getZoom(), 16));
         }
-        
+
         marker.on('dragend', (e) => {
             const pos = marker.getLatLng();
             updateCoords(pos.lat, pos.lng);
         });
-        
+
         map.on('click', (e) => {
             updateCoords(e.latlng.lat, e.latlng.lng);
         });
-        
+
         const syncInputsToMap = () => {
-            const lat = parseFloat(latInput.value);
-            const lng = parseFloat(lonInput.value);
+            const lat = safeParseFloat(latInput.value);
+            const lng = safeParseFloat(lonInput.value);
             if (!isNaN(lat) && !isNaN(lng)) {
                 marker.setLatLng([lat, lng]);
                 circle.setLatLng([lat, lng]);
                 map.setView([lat, lng], map.getZoom());
             }
         };
-        
+
+        // Listen both 'input' (live typing) and 'change' (paste/autofill)
+        latInput.addEventListener('input', syncInputsToMap);
         latInput.addEventListener('change', syncInputsToMap);
+        lonInput.addEventListener('input', syncInputsToMap);
         lonInput.addEventListener('change', syncInputsToMap);
         
         radInput.addEventListener('input', () => {
@@ -377,28 +390,55 @@
         const getLocBtn = document.getElementById('get-current-location-btn');
         if (getLocBtn) {
             getLocBtn.addEventListener('click', () => {
-                if (navigator.geolocation) {
-                    getLocBtn.disabled = true;
-                    getLocBtn.innerText = "Mengambil Lokasi...";
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            const lat = pos.coords.latitude;
-                            const lng = pos.coords.longitude;
-                            updateCoords(lat, lng);
-                            map.setView([lat, lng], 16);
-                            getLocBtn.disabled = false;
-                            getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">my_location</span> Gunakan Lokasi Saya Saat Ini`;
-                        },
-                        (err) => {
-                            alert("Gagal mendeteksi lokasi: " + err.message);
-                            getLocBtn.disabled = false;
-                            getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">my_location</span> Gunakan Lokasi Saya Saat Ini`;
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                } else {
-                    alert("Browser Anda tidak mendukung Geolocation.");
+                // Chrome/Edge require HTTPS (or localhost) for Geolocation API
+                const isHttp = location.protocol === 'http:' &&
+                    location.hostname !== 'localhost' &&
+                    location.hostname !== '127.0.0.1';
+
+                if (isHttp) {
+                    alert('Fitur "Gunakan Lokasi Saat Ini" memerlukan koneksi HTTPS.\n\nJika mengakses via HTTP, browser akan memblokir akses GPS.\nSilakan isi koordinat secara manual atau klik peta/geser marker.');
+                    return;
                 }
+
+                if (!navigator.geolocation) {
+                    alert('Browser Anda tidak mendukung Geolocation API.\nSilakan isi koordinat secara manual atau klik peta/geser marker.');
+                    return;
+                }
+
+                // Update button to loading state (use innerHTML to preserve icon)
+                getLocBtn.disabled = true;
+                getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">sync</span> Mengambil Lokasi...`;
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        const acc = pos.coords.accuracy;
+                        updateCoords(lat, lng);
+                        map.setView([lat, lng], 17);
+                        getLocBtn.disabled = false;
+                        getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">my_location</span> Gunakan Lokasi Saya Saat Ini`;
+                        // Show accuracy info
+                        const accInfo = document.createElement('p');
+                        accInfo.className = 'text-xs text-tertiary mt-1 font-semibold';
+                        accInfo.textContent = `✓ Lokasi berhasil: ${lat.toFixed(6)}, ${lng.toFixed(6)} (Akurasi ±${acc.toFixed(0)} meter)`;
+                        const existingInfo = document.getElementById('loc-accuracy-info');
+                        if (existingInfo) existingInfo.remove();
+                        accInfo.id = 'loc-accuracy-info';
+                        getLocBtn.parentElement.appendChild(accInfo);
+                    },
+                    (err) => {
+                        getLocBtn.disabled = false;
+                        getLocBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">my_location</span> Gunakan Lokasi Saya Saat Ini`;
+                        const errMessages = {
+                            1: 'Izin GPS ditolak oleh browser.\n\nCara mengaktifkan:\n• Klik ikon gembok/info di address bar\n• Ubah izin Lokasi ke "Izinkan"\nAtau isi koordinat secara manual dengan klik peta.',
+                            2: 'GPS perangkat tidak tersedia.\n\nPastikan GPS/Location Services diaktifkan di pengaturan perangkat Anda.\nAtau isi koordinat dengan klik peta di bawah.',
+                            3: 'Pengambilan lokasi timeout (>15 detik).\n\nSinyal GPS lemah. Coba:\n• Pindah ke tempat dengan sinyal lebih baik\n• Refresh halaman dan coba lagi\nAtau isi koordinat dengan klik peta.'
+                        };
+                        alert(errMessages[err.code] || `Gagal mendeteksi lokasi: ${err.message}`);
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
             });
         }
         
