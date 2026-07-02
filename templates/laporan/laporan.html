@@ -199,11 +199,11 @@
                     <thead>
                         <tr class="bg-surface-container border-b border-outline-variant/50">
                             <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Karyawan</th>
-                            <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">ID Karyawan</th>
+                            <th class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">ID Karyawan</th>
                             <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Tanggal / Waktu</th>
                             <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Aktivitas</th>
-                            <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Lokasi GPS</th>
-                            <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Keamanan Audit</th>
+                            <th class="hidden md:table-cell px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Lokasi GPS</th>
+                            <th class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary">Keamanan Audit</th>
                             <th class="px-sm py-2.5 md:px-md md:py-3 font-label-md text-secondary text-right">Status</th>
                         </tr>
                     </thead>
@@ -218,7 +218,7 @@
                                     <p class="font-body-md text-on-surface font-semibold">{{ att.employee.fullname }}</p>
                                 </div>
                             </td>
-                            <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-secondary">{{ att.employee.employee_id }}</td>
+                            <td class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm text-secondary">{{ att.employee.employee_id }}</td>
                             <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-on-surface">{{ att.timestamp|date:"d M Y, H:i A" }}</td>
                             <td class="px-sm py-2.5 md:px-md md:py-4">
                                 <span class="flex items-center gap-xs text-body-sm text-secondary">
@@ -226,12 +226,21 @@
                                     {{ att.get_type_display }}
                                 </span>
                             </td>
-                            <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm">
+                            <td class="hidden md:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm">
                                 <span class="font-medium text-on-surface">{{ att.branch.name|default:"Kantor Pusat" }}</span>
                                 <span class="block text-[11px] text-secondary">{{ att.latitude }}, {{ att.longitude }}</span>
                             </td>
-                            <td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm">
-                                <button onclick="openAuditModal('{{ att.employee.fullname|escapejs }}', '{{ att.timestamp|date:'d M Y, H:i A'|escapejs }}', '{{ att.get_type_display|escapejs }}', '{{ att.gps_accuracy|default:'N/A' }}', '{{ att.distance_from_office|default:'N/A' }}', '{{ att.face_confidence_score|default:'N/A' }}', '{{ att.liveness_result|default:'N/A' }}', '{{ att.device_information|escapejs }}', '{{ att.browser_information|escapejs }}')" class="inline-flex items-center gap-xs px-2.5 py-1 bg-surface-container hover:bg-primary hover:text-on-primary rounded-lg transition-all text-xs font-semibold text-secondary shadow-sm">
+                            <td class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm">
+                                <button class="btn-audit inline-flex items-center gap-xs px-2.5 py-1 bg-surface-container hover:bg-primary hover:text-on-primary rounded-lg transition-all text-xs font-semibold text-secondary shadow-sm"
+                                    data-employee="{{ att.employee.fullname }}"
+                                    data-timestamp="{{ att.timestamp|date:'d M Y, H:i A' }}"
+                                    data-type="{{ att.get_type_display }}"
+                                    data-accuracy="{{ att.gps_accuracy|default:'N/A' }}"
+                                    data-distance="{{ att.distance_from_office|default:'N/A' }}"
+                                    data-score="{{ att.face_confidence_score|default:'N/A' }}"
+                                    data-liveness="{{ att.liveness_result|default:'N/A' }}"
+                                    data-device="{{ att.device_information|default:'' }}"
+                                    data-browser="{{ att.browser_information|default:'' }}">
                                     <span class="material-symbols-outlined text-[16px]">shield</span>
                                     Detail Audit
                                 </button>
@@ -425,6 +434,21 @@
         if (e.target === document.getElementById('audit-modal')) {
             closeAuditModal();
         }
+    });
+
+    document.querySelectorAll('.btn-audit').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const employee = btn.getAttribute('data-employee');
+            const timestamp = btn.getAttribute('data-timestamp');
+            const type = btn.getAttribute('data-type');
+            const accuracy = btn.getAttribute('data-accuracy');
+            const distance = btn.getAttribute('data-distance');
+            const score = btn.getAttribute('data-score');
+            const liveness = btn.getAttribute('data-liveness');
+            const device = btn.getAttribute('data-device');
+            const browser = btn.getAttribute('data-browser');
+            openAuditModal(employee, timestamp, type, accuracy, distance, score, liveness, device, browser);
+        });
     });
 </script>
 </body>

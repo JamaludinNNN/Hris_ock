@@ -182,11 +182,11 @@
 <tr class="bg-surface-container border-b border-outline-variant/50">
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant text-center w-12">NO.</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">KARYAWAN</th>
-<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ID KARYAWAN</th>
-<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">DEPARTEMEN</th>
-<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">PENEMPATAN</th>
-<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">JABATAN</th>
-<th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ROLE</th>
+<th class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ID KARYAWAN</th>
+<th class="hidden md:table-cell px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">DEPARTEMEN</th>
+<th class="hidden md:table-cell px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">PENEMPATAN</th>
+<th class="hidden lg:table-cell px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">JABATAN</th>
+<th class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">ROLE</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant">STATUS</th>
 <th class="px-sm py-2.5 md:px-md md:py-4 text-label-md text-on-secondary-fixed-variant text-right pr-6">AKSI</th>
 </tr>
@@ -208,17 +208,17 @@
 </div>
 </div>
 </td>
-<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.employee_id }}</td>
-<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">{{ emp.division }}</td>
-<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">
+<td class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.employee_id }}</td>
+<td class="hidden md:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">{{ emp.division }}</td>
+<td class="hidden md:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface">
     {% if emp.branch %}
         {{ emp.branch.name }}
     {% else %}
         <span class="text-secondary font-medium italic">Kantor Pusat</span>
     {% endif %}
 </td>
-<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.position }}</td>
-<td class="px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface font-semibold">
+<td class="hidden lg:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface-variant">{{ emp.position }}</td>
+<td class="hidden sm:table-cell px-sm py-2.5 md:px-md md:py-4 text-body-sm text-on-surface font-semibold">
     {% if emp.user.role == 'admin' %}
         <span class="text-tertiary-container">HRD / Admin</span>
     {% else %}
@@ -241,8 +241,17 @@
 <td class="px-sm py-2.5 md:px-md md:py-4 text-right pr-6">
 <div class="flex items-center justify-end gap-2">
 {% if not emp.is_validated %}
-<button onclick="openValidateModal('{{ emp.id }}', '{{ emp.fullname }}', '{{ emp.user.email|default:'' }}', '{{ emp.employee_id }}', '{{ emp.division }}', '{{ emp.position }}', '{% if emp.branch %}{{ emp.branch.name|escapejs }}{% else %}Kantor Pusat{% endif %}', '{{ emp.face_data.face_image|default:'' }}')" class="p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all" title="Validasi Wajah & Profil Karyawan">
-<span class="material-symbols-outlined">how_to_reg</span>
+<button class="validate-employee-btn p-2 text-primary hover:text-on-primary-fixed-variant hover:bg-primary/5 rounded-lg transition-all"
+    title="Validasi Wajah & Profil Karyawan"
+    data-id="{{ emp.id }}"
+    data-fullname="{{ emp.fullname }}"
+    data-email="{{ emp.user.email|default:'' }}"
+    data-employee-id="{{ emp.employee_id }}"
+    data-division="{{ emp.division }}"
+    data-position="{{ emp.position }}"
+    data-branch="{% if emp.branch %}{{ emp.branch.name }}{% else %}Kantor Pusat{% endif %}"
+    data-face-image="{{ emp.face_data.face_image|default:'' }}">
+    <span class="material-symbols-outlined">how_to_reg</span>
 </button>
 {% endif %}
 <button data-id="{{ emp.id }}" data-fullname="{{ emp.fullname }}" data-email="{{ emp.user.email|default:'' }}" data-division="{{ emp.division }}" data-position="{{ emp.position }}" data-branch-id="{{ emp.branch.id|default:'' }}" data-profile-image="{{ emp.profile_image|default:'' }}" class="edit-employee-btn p-2 text-outline hover:text-tertiary hover:bg-tertiary/5 rounded-lg transition-all" title="Edit Karyawan">
@@ -569,6 +578,22 @@
             const photoBase64 = btn.getAttribute('data-profile-image');
             
             openEditModal(id, fullname, email, division, position, branchId, photoBase64);
+        });
+    });
+
+    // Attach click event listeners to validate buttons using data attributes
+    document.querySelectorAll('.validate-employee-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const fullname = btn.getAttribute('data-fullname');
+            const email = btn.getAttribute('data-email');
+            const employeeId = btn.getAttribute('data-employee-id');
+            const division = btn.getAttribute('data-division');
+            const position = btn.getAttribute('data-position');
+            const branch = btn.getAttribute('data-branch');
+            const faceImage = btn.getAttribute('data-face-image');
+            
+            openValidateModal(id, fullname, email, employeeId, division, position, branch, faceImage);
         });
     });
 </script>
