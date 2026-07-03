@@ -381,14 +381,14 @@ def presensi_view(request):
             else:
                 status = 'late'
             
-        if gps_accuracy is not None and gps_accuracy > 30.0:
+        if gps_accuracy is not None and gps_accuracy > 150.0:
             history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
             branches = Branch.objects.all().order_by('name')
             return render(request, 'presensi/presensi.html', {
                 'history': history,
                 'has_face_data': has_face_data or django_settings.DEBUG,
                 'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
-                'error': f'Gagal presensi: Akurasi GPS Anda terlalu lemah ({gps_accuracy:.1f} meter). Maksimal 30 meter. Cari lokasi yang lebih terbuka.',
+                'error': f'Gagal presensi: Akurasi GPS Anda terlalu lemah ({gps_accuracy:.1f} meter). Maksimal 150 meter. Cari lokasi yang lebih terbuka.',
                 'office_lat': target_lat,
                 'office_lon': target_lon,
                 'geofence_radius': target_radius,
@@ -598,7 +598,6 @@ def tambah_karyawan(request):
         fullname = request.POST.get('fullname')
         email = request.POST.get('email')
         password = request.POST.get('password')
-        employee_id = request.POST.get('employee_id')
         division = request.POST.get('division')
         position = request.POST.get('position')
         role = request.POST.get('role', 'karyawan')
@@ -621,7 +620,7 @@ def tambah_karyawan(request):
         
         Employee.objects.create(
             user=user,
-            employee_id=employee_id,
+            employee_id=f"EMP-{user.id:03d}",
             fullname=fullname,
             division=division,
             position=position,
@@ -713,6 +712,34 @@ def settings(request):
                 except Branch.DoesNotExist:
                     error_msg = "Cabang tidak ditemukan."
                     
+        elif action == 'edit_branch':
+            branch_id = request.POST.get('branch_id')
+            name = request.POST.get('name', '').strip()
+            latitude_raw = request.POST.get('latitude', '').strip().replace(',', '.')
+            longitude_raw = request.POST.get('longitude', '').strip().replace(',', '.')
+            radius_raw = request.POST.get('radius', '150').strip() or '150'
+            
+            if branch_id and name and latitude_raw and longitude_raw:
+                try:
+                    branch = Branch.objects.get(id=branch_id)
+                    lat_dec = Decimal(latitude_raw).quantize(Decimal('0.000001'))
+                    lng_dec = Decimal(longitude_raw).quantize(Decimal('0.000001'))
+                    
+                    branch.name = name
+                    branch.latitude = lat_dec
+                    branch.longitude = lng_dec
+                    branch.radius = int(radius_raw)
+                    branch.save()
+                    success_msg = f"Data cabang '{name}' berhasil diperbarui."
+                except Branch.DoesNotExist:
+                    error_msg = "Cabang tidak ditemukan."
+                except InvalidOperation:
+                    error_msg = "Format koordinat tidak valid. Gunakan titik (.) sebagai pemisah desimal."
+                except Exception as e:
+                    error_msg = f"Gagal memperbarui cabang: {str(e)}"
+            else:
+                error_msg = "Semua bidang cabang harus diisi."
+                
         else:
             # Save global config
             # Normalize: replace comma decimal separator → dot (locale-safe)
@@ -807,7 +834,6 @@ def register_view(request):
         fullname = request.POST.get('fullname')
         email = request.POST.get('email')
         password = request.POST.get('password')
-        employee_id = request.POST.get('employee_id')
         division = request.POST.get('division')
         position = request.POST.get('position')
         branch_id = request.POST.get('branch')
@@ -816,9 +842,6 @@ def register_view(request):
         # Check if email/username already exists
         if User.objects.filter(email__iexact=email).exists() or User.objects.filter(username__iexact=email).exists():
             return render(request, 'auth/register.html', {'error': 'Email / Username sudah terdaftar.', 'branches': branches})
-            
-        if Employee.objects.filter(employee_id=employee_id).exists():
-            return render(request, 'auth/register.html', {'error': 'ID Karyawan sudah terdaftar.', 'branches': branches})
             
         try:
             # Create user
@@ -837,7 +860,7 @@ def register_view(request):
             # Create Employee profile
             Employee.objects.create(
                 user=user,
-                employee_id=employee_id,
+                employee_id=f"EMP-{user.id:03d}",
                 fullname=fullname,
                 division=division,
                 position=position,

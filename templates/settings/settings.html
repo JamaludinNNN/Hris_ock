@@ -289,6 +289,9 @@
                                 <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.longitude }}</td>
                                 <td class="px-sm py-2.5 md:px-md md:py-4 font-body-sm text-secondary">{{ branch.radius }} m</td>
                                 <td class="px-sm py-2.5 md:px-md md:py-4 text-right">
+                                    <button type="button" onclick="openEditBranchModal('{{ branch.id }}', '{{ branch.name|escapejs }}', '{{ branch.latitude }}', '{{ branch.longitude }}', '{{ branch.radius }}')" class="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors inline-block" title="Edit Cabang">
+                                        <span class="material-symbols-outlined text-[20px]">edit</span>
+                                    </button>
                                     <form method="POST" action="{% url 'settings' %}" class="inline-block" id="delete-branch-form-{{ branch.id }}">
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="delete_branch">
@@ -311,6 +314,49 @@
         </div>
     </section>
 </main>
+
+<!-- Edit Branch Modal -->
+<div id="edit-branch-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50 p-4">
+    <div class="bg-surface-container-lowest rounded-2xl w-full max-w-lg shadow-xl transform scale-95 transition-all duration-300" id="edit-branch-content">
+        <div class="p-md md:p-lg border-b border-outline-variant/30 flex justify-between items-center">
+            <h3 class="font-headline-md text-headline-md text-on-surface">Edit Cabang</h3>
+            <button type="button" onclick="closeEditBranchModal()" class="text-secondary hover:text-on-surface transition-colors p-1 rounded-full hover:bg-surface-container">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'settings' %}" class="p-md md:p-lg space-y-md">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_branch">
+            <input type="hidden" name="branch_id" id="edit-branch-id">
+            
+            <div class="space-y-xs">
+                <label class="block font-label-md text-label-md text-on-surface-variant">Nama Cabang</label>
+                <input type="text" name="name" id="edit-branch-name" required class="w-full px-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md" placeholder="Contoh: Cabang Jakarta">
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-sm">
+                <div class="space-y-xs">
+                    <label class="block font-label-md text-label-md text-on-surface-variant">Latitude</label>
+                    <input type="text" name="latitude" id="edit-branch-lat" required class="w-full px-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md" placeholder="-6.2088">
+                </div>
+                <div class="space-y-xs">
+                    <label class="block font-label-md text-label-md text-on-surface-variant">Longitude</label>
+                    <input type="text" name="longitude" id="edit-branch-lng" required class="w-full px-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md" placeholder="106.8456">
+                </div>
+            </div>
+            
+            <div class="space-y-xs">
+                <label class="block font-label-md text-label-md text-on-surface-variant">Radius (meter)</label>
+                <input type="number" name="radius" id="edit-branch-rad" required min="10" max="10000" class="w-full px-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md" placeholder="150">
+            </div>
+            
+            <div class="pt-sm flex justify-end gap-sm">
+                <button type="button" onclick="closeEditBranchModal()" class="px-md py-2 rounded-lg text-secondary hover:bg-surface-container font-label-md transition-colors">Batal</button>
+                <button type="submit" class="px-md py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md shadow-sm transition-colors active:scale-95">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
     document.querySelectorAll('.active\\:scale-95').forEach(el => {
@@ -370,23 +416,6 @@
                 title: 'Berhasil',
                 text: 'Lokasi berhasil ditandai.',
                 confirmButtonColor: '#003d9b'
-            });
-        }
-        
-        function confirmDeleteBranch(id, name) {
-            Swal.fire({
-                title: 'Konfirmasi Hapus',
-                text: `Apakah Anda yakin ingin menghapus cabang ${name}? Tindakan ini tidak dapat dibatalkan.`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#BA1A1A',
-                cancelButtonColor: '#6B7280',
-                confirmButtonText: 'Ya, Hapus Cabang',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById(`delete-branch-form-${id}`).submit();
-                }
             });
         }
 
@@ -479,6 +508,51 @@
         
         setTimeout(() => map.invalidateSize(), 300);
     });
+    
+    // Global Functions for Inline HTML handlers
+    window.confirmDeleteBranch = function(id, name) {
+        Swal.fire({
+            title: 'Konfirmasi Hapus',
+            text: `Apakah Anda yakin ingin menghapus cabang ${name}? Tindakan ini tidak dapat dibatalkan.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#BA1A1A',
+            cancelButtonColor: '#6B7280',
+            confirmButtonText: 'Ya, Hapus Cabang',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById(`delete-branch-form-${id}`).submit();
+            }
+        });
+    };
+
+    window.openEditBranchModal = function(id, name, lat, lng, rad) {
+        document.getElementById('edit-branch-id').value = id;
+        document.getElementById('edit-branch-name').value = name;
+        
+        // Use Javascript string replacement to ensure consistent dot decimal handling from Django float template rendering
+        document.getElementById('edit-branch-lat').value = String(lat).replace(',', '.');
+        document.getElementById('edit-branch-lng').value = String(lng).replace(',', '.');
+        
+        document.getElementById('edit-branch-rad').value = rad;
+        
+        const modal = document.getElementById('edit-branch-modal');
+        const content = document.getElementById('edit-branch-content');
+        
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    };
+    
+    window.closeEditBranchModal = function() {
+        const modal = document.getElementById('edit-branch-modal');
+        const content = document.getElementById('edit-branch-content');
+        
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        content.classList.remove('scale-100');
+        content.classList.add('scale-95');
+    };
 </script>
 </body>
 </html>
