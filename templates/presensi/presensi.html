@@ -447,6 +447,10 @@
                             <span class="font-label-sm text-primary" id="office-radius">GPS Aktif</span>
                         </div>
                         <p class="font-body-sm text-secondary leading-tight" id="live-distance-details">Mendeteksi koordinat lokasi presensi Anda...</p>
+                        <button type="button" onclick="forceGPSRequest()" class="mt-sm w-full py-2 bg-primary/10 text-primary font-label-md rounded-lg hover:bg-primary/20 active:bg-primary/30 transition-colors flex items-center justify-center gap-xs border border-primary/20">
+                            <span class="material-symbols-outlined text-[18px]">my_location</span>
+                            Minta Izin & Perbarui GPS
+                        </button>
                     </div>
                 </div>
 
@@ -1599,3 +1603,11 @@
 </script>
 </body>
 </html>
+<script>
+    function forceGPSRequest() {
+        showToast('Meminta ulang izin GPS ke perangkat...', 'info', 'gps_request', 3000);
+        if (typeof trackUserLocation === 'function') {
+            trackUserLocation();
+        }
+    }
+</script>
