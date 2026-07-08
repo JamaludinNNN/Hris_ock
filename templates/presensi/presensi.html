@@ -249,14 +249,18 @@
                         <input type="hidden" name="is_fake_gps" id="form-is-fake-gps">
                         
                         <!-- Branch Selection Dropdown -->
-                        <div class="w-full">
-                            <label for="branch-select" class="block font-label-md text-on-surface-variant mb-xs text-xs sm:text-sm font-semibold">Cabang Toko Absensi</label>
-                            <select id="branch-select" name="branch_id" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-xs sm:text-body-sm shadow-sm transition-all">
-                                <option value="" {% if not request.user.employee_profile.branch %}selected{% endif %}>Kantor Pusat (Bawaan)</option>
-                                {% for branch in branches %}
-                                <option value="{{ branch.id }}" {% if request.user.employee_profile.branch == branch %}selected{% endif %}>{{ branch.name }} (Radius: {{ branch.radius }}m)</option>
-                                {% endfor %}
-                            </select>
+                        <div class="w-full space-y-xs">
+                            <label for="branch-select" class="block font-label-md text-on-surface-variant text-xs sm:text-sm font-semibold">Cabang Toko Absensi</label>
+                            <div class="relative group">
+                                <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px] pointer-events-none">storefront</span>
+                                <select id="branch-select" name="branch_id" class="w-full pl-[40px] pr-[36px] py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none bg-surface-container-lowest text-on-surface text-xs sm:text-body-sm shadow-sm appearance-none cursor-pointer font-medium">
+                                    <option value="" {% if not request.user.employee_profile.branch %}selected{% endif %}>Kantor Pusat (Bawaan)</option>
+                                    {% for branch in branches %}
+                                    <option value="{{ branch.id }}" {% if request.user.employee_profile.branch == branch %}selected{% endif %}>{{ branch.name }} (Radius: {{ branch.radius }}m)</option>
+                                    {% endfor %}
+                                </select>
+                                <span class="material-symbols-outlined absolute right-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[20px]">keyboard_arrow_down</span>
+                            </div>
                         </div>
                         
                         <div class="flex flex-col sm:flex-row gap-sm sm:gap-md w-full">
@@ -599,7 +603,7 @@
         Swal.fire({
             icon: 'error',
             title: 'Keamanan GPS Terdeteksi!',
-            text: message,
+            text: message + ' Perangkat Anda terdeteksi menggunakan aplikasi ketiga atau alat manipulasi lokasi.',
             confirmButtonText: 'Mengerti',
             confirmButtonColor: '#d33'
         });
@@ -612,7 +616,7 @@
             gpsStatusText.className = 'font-label-md font-bold text-error';
         }
         if (distDetails) {
-            distDetails.innerText = 'Presensi Ditolak: Penggunaan Fake GPS terdeteksi oleh sistem keamanan.';
+            distDetails.innerText = 'Presensi Ditolak: Perangkat Anda menggunakan aplikasi ketiga.';
             distDetails.className = 'font-body-sm text-error font-bold mt-1';
         }
     }
@@ -698,7 +702,7 @@
             const isNativeWatchPosition = navigator.geolocation.watchPosition.toString().includes('[native code]');
             if (!isNativeGetCurrentPosition || !isNativeWatchPosition) {
                 localIsFakeGPS = true;
-                fakeReason = "Ekstensi pemanipulasi lokasi (Fake GPS extension) terdeteksi di browser.";
+                fakeReason = "Ekstensi pemanipulasi lokasi terdeteksi.";
             }
         } catch (e) {
             localIsFakeGPS = true;
@@ -710,7 +714,7 @@
         const targetDistance = calculateHaversine(lat, lon, OFFICE_LAT, OFFICE_LON);
         if (targetDistance === 0 || (targetDistance < 0.05 && targetDistance > 0)) {
             localIsFakeGPS = true;
-            fakeReason = "Koordinat Anda terlalu presisi/identik dengan titik lokasi cabang (indikator Fake GPS).";
+            fakeReason = "Koordinat Anda terlalu presisi/identik dengan titik lokasi cabang.";
         }
 
         // 4. IP vs GPS Distance Check (Background check)
