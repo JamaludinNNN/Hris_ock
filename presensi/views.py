@@ -331,6 +331,22 @@ def presensi_view(request):
             c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0-a))
             distance = R * c
             
+            # Anti-Fake GPS: Real GPS never matches target coordinates exactly (down to 10cm) due to noise
+            if distance < 0.1:
+                history = Attendance.objects.filter(employee=employee).order_by('-timestamp')[:10]
+                branches = Branch.objects.all().order_by('name')
+                return render(request, 'presensi/presensi.html', {
+                    'history': history,
+                    'has_face_data': has_face_data or django_settings.DEBUG,
+                    'face_status': employee.face_status if not django_settings.DEBUG else 'APPROVED',
+                    'error': 'Gagal presensi: Lokasi tidak valid. Manipulasi koordinat (Fake GPS) terdeteksi.',
+                    'office_lat': target_lat,
+                    'office_lon': target_lon,
+                    'geofence_radius': target_radius,
+                    'verification_method': sys_settings['verification_method'],
+                    'branches': branches,
+                })
+            
             # Enforce max radius limit of 100 meters
             allowed_radius = float(target_radius)
             if distance > allowed_radius:

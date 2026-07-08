@@ -589,7 +589,33 @@
 
     let lastCoords = [];
     let isFakeGPS = false;
+    let hasCheckedIP = false;
     let currentGPSAccuracy = null;
+
+    function flagFakeGPS(message) {
+        isFakeGPS = true;
+        document.getElementById('form-is-fake-gps').value = 'true';
+        
+        Swal.fire({
+            icon: 'error',
+            title: 'Keamanan GPS Terdeteksi!',
+            text: message,
+            confirmButtonText: 'Mengerti',
+            confirmButtonColor: '#d33'
+        });
+        
+        const gpsStatusText = document.getElementById('gps-geofence-status');
+        const distDetails = document.getElementById('live-distance-details');
+        
+        if (gpsStatusText) {
+            gpsStatusText.innerText = 'Fake GPS Aktif!';
+            gpsStatusText.className = 'font-label-md font-bold text-error';
+        }
+        if (distDetails) {
+            distDetails.innerText = 'Presensi Ditolak: Penggunaan Fake GPS terdeteksi oleh sistem keamanan.';
+            distDetails.className = 'font-body-sm text-error font-bold mt-1';
+        }
+    }
 
     const sampleCanvas = document.createElement('canvas');
     const sampleCtx = sampleCanvas.getContext('2d');
@@ -654,10 +680,74 @@
             currentGPSAccuracy = accuracy;
         }
 
-        // Check for Webdriver or emulator/bot environment (bypass on localhost/testing)
+        // Anti-Fake GPS Security Checks
+        let localIsFakeGPS = false;
+        let fakeReason = "";
+
+        // 1. Check for Webdriver or emulator/bot environment (bypass on localhost)
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         const isEmulatorOrBot = !isLocalhost && (navigator.webdriver || /headless|chrome-lighthouse|lighthouse|puppeteer/i.test(navigator.userAgent));
-        if (isEmulatorOrBot) isFakeGPS = true;
+        if (isEmulatorOrBot) {
+            localIsFakeGPS = true;
+            fakeReason = "Emulator/bot atau browser otomatis terdeteksi.";
+        }
+
+        // 2. Check for Geolocation API Extension Wrappers (overriding native functions)
+        try {
+            const isNativeGetCurrentPosition = navigator.geolocation.getCurrentPosition.toString().includes('[native code]');
+            const isNativeWatchPosition = navigator.geolocation.watchPosition.toString().includes('[native code]');
+            if (!isNativeGetCurrentPosition || !isNativeWatchPosition) {
+                localIsFakeGPS = true;
+                fakeReason = "Ekstensi pemanipulasi lokasi (Fake GPS extension) terdeteksi di browser.";
+            }
+        } catch (e) {
+            localIsFakeGPS = true;
+            fakeReason = "Manipulasi Geolocation API terdeteksi.";
+        }
+
+        // 3. Exact Coordinate Match check
+        // A real GPS has positioning noise and will never match target coordinates exactly.
+        const targetDistance = calculateHaversine(lat, lon, OFFICE_LAT, OFFICE_LON);
+        if (targetDistance === 0 || (targetDistance < 0.05 && targetDistance > 0)) {
+            localIsFakeGPS = true;
+            fakeReason = "Koordinat Anda terlalu presisi/identik dengan titik lokasi cabang (indikator Fake GPS).";
+        }
+
+        // 4. IP vs GPS Distance Check (Background check)
+        if (source && source.includes("Akurat") && !hasCheckedIP && !isLocalhost) {
+            hasCheckedIP = true;
+            fetch('https://freeipapi.com/api/json')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.latitude && data.longitude) {
+                        const ipLat = parseFloat(data.latitude);
+                        const ipLon = parseFloat(data.longitude);
+                        const ipGpsDist = calculateHaversine(lat, lon, ipLat, ipLon);
+                        console.log(`IP-GPS Distance: ${ipGpsDist.toFixed(1)} meters.`);
+                        if (ipGpsDist > 150000) { // 150 km
+                            flagFakeGPS("Ketidakcocokan jarak terdeteksi antara lokasi IP Internet dan koordinat GPS Anda (Terdeteksi Fake GPS / VPN).");
+                        }
+                    }
+                })
+                .catch(() => {
+                    fetch('https://ipwho.is/')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.latitude && data.longitude) {
+                                const ipLat = parseFloat(data.latitude);
+                                const ipLon = parseFloat(data.longitude);
+                                const ipGpsDist = calculateHaversine(lat, lon, ipLat, ipLon);
+                                if (ipGpsDist > 150000) {
+                                    flagFakeGPS("Ketidakcocokan jarak terdeteksi antara lokasi IP Internet dan koordinat GPS Anda (Terdeteksi Fake GPS / VPN).");
+                                }
+                            }
+                        });
+                });
+        }
+
+        if (localIsFakeGPS && !isFakeGPS) {
+            flagFakeGPS(fakeReason);
+        }
 
         userLat = lat;
         userLon = lon;
@@ -1499,7 +1589,13 @@
                 // 1. Fake GPS Check
                 if (isFakeGPS) {
                     console.log("Attendance Failed: Fake GPS detected");
-                    showToast('Gagal presensi: Lokasi tidak valid. Fake GPS terdeteksi.', 'error');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Keamanan GPS Terdeteksi!',
+                        text: 'Gagal presensi: Lokasi tidak valid. Penggunaan Fake GPS terdeteksi oleh sistem keamanan.',
+                        confirmButtonText: 'Mengerti',
+                        confirmButtonColor: '#d33'
+                    });
                     return;
                 }
                 
