@@ -84,6 +84,16 @@
             <span class="material-symbols-outlined" data-icon="assessment">assessment</span>
             <span class="font-body-md text-body-md">Laporan</span>
         </a>
+
+        <!-- Jadwal Kerja -->
+        {% if request.resolver_match.url_name == 'jadwal' %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'jadwal' %}">
+        {% else %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'jadwal' %}">
+        {% endif %}
+            <span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
+            <span class="font-body-md text-body-md">Jadwal Kerja</span>
+        </a>
     </nav>
     <div class="mt-auto px-md space-y-sm">
         <div class="pt-md border-t border-outline-variant space-y-xs">

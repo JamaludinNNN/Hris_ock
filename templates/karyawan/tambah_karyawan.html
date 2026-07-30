@@ -175,11 +175,25 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
             <div>
                 <label class="block font-label-md text-on-surface-variant mb-xs">Departemen</label>
-                <input type="text" name="division" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                <select name="division" id="tambah-division" required onchange="handleTambahDivisionChange()" class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                    <option value="" disabled selected>-- Pilih Departemen --</option>
+                    <option value="HR">HR</option>
+                    <option value="CONTROLLER">CONTROLLER</option>
+                    <option value="MARKETING COMMUNICATION">MARKETING COMMUNICATION</option>
+                    <option value="TRAINER">TRAINER</option>
+                    <option value="RND">RND</option>
+                    <option value="CREW TOKO">CREW TOKO</option>
+                </select>
             </div>
             <div>
                 <label class="block font-label-md text-on-surface-variant mb-xs">Jabatan</label>
-                <input type="text" name="position" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                <input type="text" name="position" id="tambah-position-input" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface" placeholder="Staff, Manager">
+                <select id="tambah-position-select" class="hidden w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface">
+                    <option value="" disabled selected>-- Pilih Jabatan --</option>
+                    <option value="MOD">MOD</option>
+                    <option value="LEADER">LEADER</option>
+                    <option value="CREW">CREW</option>
+                </select>
             </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
@@ -203,6 +217,31 @@
 
 </main>
 <script>
+        function handleTambahDivisionChange() {
+            const divisionSelect = document.getElementById('tambah-division');
+            const positionInput = document.getElementById('tambah-position-input');
+            const positionSelect = document.getElementById('tambah-position-select');
+
+            if (divisionSelect.value === 'CREW TOKO') {
+                positionInput.classList.add('hidden');
+                positionInput.removeAttribute('name');
+                positionInput.removeAttribute('required');
+
+                positionSelect.classList.remove('hidden');
+                positionSelect.setAttribute('name', 'position');
+                positionSelect.setAttribute('required', 'required');
+                positionSelect.value = '';
+            } else {
+                positionSelect.classList.add('hidden');
+                positionSelect.removeAttribute('name');
+                positionSelect.removeAttribute('required');
+
+                positionInput.classList.remove('hidden');
+                positionInput.setAttribute('name', 'position');
+                positionInput.setAttribute('required', 'required');
+            }
+        }
+
         // Handle Profile Image Selection and Conversion to Base64
         const photoInput = document.getElementById('profile-photo-input');
         const photoPreview = document.getElementById('photo-preview');

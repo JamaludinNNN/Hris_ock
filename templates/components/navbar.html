@@ -1,4 +1,4 @@
-<header class="h-16 fixed top-0 right-0 left-[260px] z-40 bg-surface dark:bg-on-background border-b border-outline-variant dark:border-outline flex justify-between items-center px-md">
+<header class="h-16 fixed top-0 right-0 left-0 md:left-[260px] z-40 bg-surface dark:bg-on-background border-b border-outline-variant dark:border-outline flex justify-between items-center px-md">
     <div class="flex items-center gap-md">
         <button class="md:hidden material-symbols-outlined text-secondary hover:text-primary transition-all duration-200 active:scale-90 flex items-center justify-center" id="sidebar-toggle-btn" onclick="toggleSidebar(true)">menu</button>
     </div>
@@ -6,13 +6,13 @@
         <div onclick="openProfileModal()" class="flex items-center gap-sm cursor-pointer group" title="Ubah Nama & Foto Profil">
             <div class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border-2 border-transparent group-hover:border-primary transition-all shadow-sm shrink-0">
                 {% if request.user.employee_profile.profile_image %}
-                    <img src="{{ request.user.employee_profile.profile_image }}" class="w-full h-full object-cover">
+                <img src="{{ request.user.employee_profile.profile_image }}" class="w-full h-full object-cover">
                 {% else %}
-                    <div class="w-full h-full bg-primary-fixed flex items-center justify-center text-primary font-bold">
-                        {% with name=request.user.employee_profile.fullname|default:request.user.username %}
-                            {{ name|make_list|first|upper }}
-                        {% endwith %}
-                    </div>
+                <div class="w-full h-full bg-primary-fixed flex items-center justify-center text-primary font-bold">
+                    {% with name=request.user.employee_profile.fullname|default:request.user.username %}
+                    {{ name|make_list|first|upper }}
+                    {% endwith %}
+                </div>
                 {% endif %}
             </div>
             <div class="hidden lg:block">
@@ -41,7 +41,7 @@
             </h3>
             <button onclick="closeProfileModal()" class="material-symbols-outlined text-secondary hover:text-primary transition-colors">close</button>
         </div>
-        
+
         <form method="POST" action="{% url 'update_profile' %}" class="space-y-md">
             {% csrf_token %}
             <input type="hidden" name="profile_image_base64" id="user-profile-image-base64">
@@ -50,9 +50,9 @@
             <div class="flex items-center gap-md p-sm bg-surface-container-low rounded-xl border border-outline-variant/30">
                 <div class="w-16 h-16 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold overflow-hidden border border-primary/10 shadow-sm shrink-0" id="user-photo-preview">
                     {% if request.user.employee_profile.profile_image %}
-                        <img src="{{ request.user.employee_profile.profile_image }}" class="w-full h-full object-cover">
+                    <img src="{{ request.user.employee_profile.profile_image }}" class="w-full h-full object-cover">
                     {% else %}
-                        <span class="material-symbols-outlined text-[32px]">photo_camera</span>
+                    <span class="material-symbols-outlined text-[32px]">photo_camera</span>
                     {% endif %}
                 </div>
                 <div>
@@ -84,7 +84,7 @@
             content.classList.add('scale-100');
         }
     }
-    
+
     function closeProfileModal() {
         const modal = document.getElementById('user-profile-modal');
         const content = document.getElementById('user-profile-modal-content');
@@ -94,7 +94,7 @@
             content.classList.add('scale-95');
         }
     }
-    
+
     // File reader for user photo base64
     document.addEventListener('DOMContentLoaded', () => {
         const photoInput = document.getElementById('user-profile-photo-input');

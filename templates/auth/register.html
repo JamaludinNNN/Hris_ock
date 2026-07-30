@@ -228,15 +228,32 @@
                     <div class="space-y-xs">
                         <label class="block font-label-md text-on-surface-variant" for="division">Departemen / Divisi</label>
                         <div class="relative group">
-                            <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[18px]">domain</span>
-                            <input class="w-full pl-[36px] pr-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-sm text-body-sm" id="division" name="division" placeholder="IT, HR, Marketing" type="text" required/>
+                            <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[18px] z-10">domain</span>
+                            <select class="w-full pl-[36px] pr-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-sm text-body-sm bg-surface-container-lowest" id="division" name="division" required onchange="handleDivisionChange()">
+                                <option value="" disabled selected>Pilih Departemen</option>
+                                <option value="HR">HR</option>
+                                <option value="CONTROLLER">CONTROLLER</option>
+                                <option value="MARKETING COMMUNICATION">MARKETING COMMUNICATION</option>
+                                <option value="TRAINER">TRAINER</option>
+                                <option value="RND">RND</option>
+                                <option value="CREW TOKO">CREW TOKO</option>
+                            </select>
                         </div>
                     </div>
                     <div class="space-y-xs">
                         <label class="block font-label-md text-on-surface-variant" for="position">Jabatan / Posisi</label>
                         <div class="relative group">
-                            <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[18px]">work</span>
-                            <input class="w-full pl-[36px] pr-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-sm text-body-sm" id="position" name="position" placeholder="Staff, Manager" type="text" required/>
+                            <span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[18px] z-10">work</span>
+                            <!-- Default Text Input for general departments (opsional) -->
+                            <input class="w-full pl-[36px] pr-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-sm text-body-sm" id="position-input" name="position" placeholder="Staff, Manager (Opsional)" type="text"/>
+
+                            <!-- Dropdown for CREW TOKO -->
+                            <select class="hidden w-full pl-[36px] pr-sm py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none font-body-sm text-body-sm bg-surface-container-lowest" id="position-select">
+                                <option value="" disabled selected>Pilih Jabatan</option>
+                                <option value="MOD">MOD</option>
+                                <option value="LEADER">LEADER</option>
+                                <option value="CREW">CREW</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -282,6 +299,31 @@
 </main>
 
 <script>
+    function handleDivisionChange() {
+        const divisionSelect = document.getElementById('division');
+        const positionInput = document.getElementById('position-input');
+        const positionSelect = document.getElementById('position-select');
+
+        if (divisionSelect.value === 'CREW TOKO') {
+            positionInput.classList.add('hidden');
+            positionInput.removeAttribute('name');
+            positionInput.removeAttribute('required');
+
+            positionSelect.classList.remove('hidden');
+            positionSelect.setAttribute('name', 'position');
+            positionSelect.setAttribute('required', 'required');
+            positionSelect.value = '';
+        } else {
+            positionSelect.classList.add('hidden');
+            positionSelect.removeAttribute('name');
+            positionSelect.removeAttribute('required');
+
+            positionInput.classList.remove('hidden');
+            positionInput.setAttribute('name', 'position');
+            positionInput.removeAttribute('required');
+        }
+    }
+
     function togglePassword() {
         const passwordInput = document.getElementById('password');
         const visibilityIcon = document.getElementById('visibility-icon');

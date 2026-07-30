@@ -113,3 +113,21 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.employee.fullname} - {self.type} - {self.timestamp}"
+
+
+class Schedule(models.Model):
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='schedules'
+    )
+    shift_name = models.CharField(max_length=100)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.employee.fullname} - {self.shift_name} ({self.start_date} s/d {self.end_date})"
+

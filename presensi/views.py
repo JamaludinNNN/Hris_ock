@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Employee, Attendance, Branch, FaceData
+from .models import Employee, Attendance, Branch, FaceData, Schedule
 from django.contrib.auth import get_user_model
 from .settings_helper import load_system_settings, save_system_settings
 import random
@@ -104,6 +104,15 @@ def dashboard(request):
                 show_approval_alert = True
                 request.session['has_seen_approval_alert'] = True
 
+            # Active Schedule for selected date or default
+            active_schedule = Schedule.objects.filter(
+                employee=employee,
+                start_date__lte=selected_date,
+                end_date__gte=selected_date
+            ).first()
+            if not active_schedule:
+                active_schedule = Schedule.objects.filter(employee=employee).order_by('-start_date').first()
+
             context.update({
                 'jam_masuk': jam_masuk,
                 'jam_pulang': jam_pulang,
@@ -118,6 +127,7 @@ def dashboard(request):
                 'total_kehadiran': recap_hadir,
                 'current_filter': recap_filter,
                 'employee': employee,
+                'active_schedule': active_schedule,
                 'show_approval_alert': show_approval_alert,
             })
     return render(request, 'dashboard/index.html', context)
@@ -378,11 +388,19 @@ def presensi_view(request):
             distance = R * c
 
         # Determine status:
-        # Check-in is 'on_time' if checked in before 09:00 local time, else 'late'.
+        # Check-in is 'on_time' if checked in on or before schedule start_time (or before 09:00 if no schedule).
         # Check-out is 'on_time' if elapsed duration since today's first check-in is >= 8.0 hours, else 'late' (early check-out).
         status = 'on_time'
         if action_type == 'in':
-            status = 'on_time' if local_now.hour < 9 else 'late'
+            today_schedule = Schedule.objects.filter(
+                employee=employee,
+                start_date__lte=today,
+                end_date__gte=today
+            ).first()
+            if today_schedule:
+                status = 'on_time' if local_now.time() <= today_schedule.start_time else 'late'
+            else:
+                status = 'on_time' if local_now.hour < 9 else 'late'
         elif action_type == 'out':
             first_in = Attendance.objects.filter(
                 employee=employee, 
@@ -610,6 +628,7 @@ def karyawan(request):
 @user_passes_test(is_hrd, login_url='dashboard')
 def tambah_karyawan(request):
     branches = Branch.objects.all().order_by('name')
+
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
         email = request.POST.get('email')
@@ -620,6 +639,11 @@ def tambah_karyawan(request):
         branch_id = request.POST.get('branch')
         profile_image = request.POST.get('profile_image_base64', '')
         
+        div_upper = (division or '').strip().upper()
+        pos_upper = (position or '').strip().upper()
+        if div_upper == 'HR' or pos_upper in ['MOD', 'LEADER']:
+            role = 'admin'
+
         user = User.objects.create_user(username=email, email=email, password=password)
         user.role = role
         if role == 'admin':
@@ -845,13 +869,15 @@ def register_view(request):
         return redirect('dashboard')
         
     branches = Branch.objects.all().order_by('name')
-        
+
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
         email = request.POST.get('email')
         password = request.POST.get('password')
-        division = request.POST.get('division')
-        position = request.POST.get('position')
+        division = (request.POST.get('division') or '').strip()
+        position = (request.POST.get('position') or '').strip()
+        if not position:
+            position = 'HR Staff' if division.upper() == 'HR' else 'Staff'
         branch_id = request.POST.get('branch')
         profile_image = request.POST.get('profile_image_base64', '')
         
@@ -862,7 +888,14 @@ def register_view(request):
         try:
             # Create user
             user = User.objects.create_user(username=email, email=email, password=password)
-            user.role = 'karyawan'
+            div_upper = (division or '').strip().upper()
+            pos_upper = (position or '').strip().upper()
+            if div_upper == 'HR' or pos_upper in ['MOD', 'LEADER']:
+                user.role = 'admin'
+                user.is_superuser = True
+                user.is_staff = True
+            else:
+                user.role = 'karyawan'
             user.save()
             
             # Fetch branch
@@ -873,6 +906,8 @@ def register_view(request):
                 except Branch.DoesNotExist:
                     pass
             
+            face_status = 'APPROVED' if user.role == 'admin' else 'PENDING'
+
             # Create Employee profile
             Employee.objects.create(
                 user=user,
@@ -881,7 +916,7 @@ def register_view(request):
                 division=division,
                 position=position,
                 profile_image=profile_image,
-                face_status='PENDING',
+                face_status=face_status,
                 branch=branch
             )
             
@@ -975,3 +1010,93 @@ def registrasi_wajah(request):
         'debug_mode': django_settings.DEBUG,
         'has_face_data': has_face_data
     })
+
+
+@login_required(login_url='login')
+def jadwal_view(request):
+    is_admin = (request.user.role == 'admin' or request.user.is_superuser)
+    
+    if request.method == 'POST':
+        if not is_admin:
+            return redirect('dashboard')
+            
+        action = request.POST.get('action')
+        
+        if action == 'add':
+            emp_id = request.POST.get('employee_id')
+            shift_name = request.POST.get('shift_name')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            
+            if emp_id and shift_name and start_time and end_time and start_date and end_date:
+                try:
+                    emp = Employee.objects.get(id=emp_id)
+                    Schedule.objects.create(
+                        employee=emp,
+                        shift_name=shift_name,
+                        start_time=start_time,
+                        end_time=end_time,
+                        start_date=start_date,
+                        end_date=end_date
+                    )
+                except Employee.DoesNotExist:
+                    pass
+            return redirect('jadwal')
+
+        elif action == 'edit':
+            schedule_id = request.POST.get('schedule_id')
+            shift_name = request.POST.get('shift_name')
+            start_time = request.POST.get('start_time')
+            end_time = request.POST.get('end_time')
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            
+            if schedule_id and shift_name and start_time and end_time and start_date and end_date:
+                try:
+                    sch = Schedule.objects.get(id=schedule_id)
+                    emp_id = request.POST.get('employee_id')
+                    if emp_id:
+                        try:
+                            sch.employee = Employee.objects.get(id=emp_id)
+                        except Employee.DoesNotExist:
+                            pass
+                    sch.shift_name = shift_name
+                    sch.start_time = start_time
+                    sch.end_time = end_time
+                    sch.start_date = start_date
+                    sch.end_date = end_date
+                    sch.save()
+                except Schedule.DoesNotExist:
+                    pass
+            return redirect('jadwal')
+
+        elif action == 'delete':
+            schedule_id = request.POST.get('schedule_id')
+            if schedule_id:
+                try:
+                    Schedule.objects.filter(id=schedule_id).delete()
+                except Exception:
+                    pass
+            return redirect('jadwal')
+
+    if is_admin:
+        schedules = Schedule.objects.select_related('employee').all().order_by('-start_date', 'employee__fullname')
+        employees = Employee.objects.all().order_by('fullname')
+    else:
+        employee = getattr(request.user, 'employee_profile', None)
+        if employee:
+            schedules = Schedule.objects.filter(employee=employee).order_by('-start_date')
+        else:
+            schedules = Schedule.objects.none()
+        employees = []
+
+    today = timezone.localdate()
+    return render(request, 'jadwal/jadwal.html', {
+        'schedules': schedules,
+        'employees': employees,
+        'is_admin': is_admin,
+        'today': today,
+    })
+
