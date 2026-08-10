@@ -381,24 +381,40 @@
                 <a href="{% url 'jadwal' %}" class="text-xs text-primary font-bold hover:underline">Lihat Semua</a>
             </div>
             {% if active_schedule %}
-            <div class="p-md bg-primary/5 rounded-xl border border-primary/20 space-y-sm">
+            <div class="p-md {% if active_schedule.is_off or active_schedule.shift_name.upper == 'OFF' %}bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800{% else %}bg-primary/5 border-primary/20{% endif %} rounded-xl border space-y-sm">
                 <div class="flex items-center justify-between">
+                    {% if active_schedule.is_off or active_schedule.shift_name.upper == 'OFF' %}
+                    <span class="px-2.5 py-1 rounded-full bg-red-600 text-white text-xs font-bold uppercase tracking-wider">🔴 OFF / Libur</span>
+                    {% else %}
                     <span class="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">{{ active_schedule.shift_name }}</span>
-                    <span class="text-xs font-medium text-secondary">Periode Rotasi</span>
+                    {% endif %}
+                    <span class="text-xs font-medium text-secondary">Jadwal Shift</span>
                 </div>
                 <div class="flex items-center gap-2 text-on-surface font-bold text-lg">
                     <span class="material-symbols-outlined text-primary text-[22px]">schedule</span>
-                    {{ active_schedule.start_time|time:"H:i" }} - {{ active_schedule.end_time|time:"H:i" }} WIB
+                    {% if active_schedule.is_off or active_schedule.shift_name.upper == 'OFF' %}
+                        <span class="text-red-700 dark:text-red-400">Libur / Off Duty</span>
+                    {% elif active_schedule.start_time %}
+                        {{ active_schedule.start_time|time:"H:i" }} - {{ active_schedule.end_time|time:"H:i" }} WIB
+                    {% else %}
+                        {{ active_schedule.shift_name }}
+                    {% endif %}
                 </div>
-                <div class="flex items-center gap-1.5 text-xs text-secondary border-t border-primary/10 pt-2">
+                <div class="flex items-center gap-1.5 text-xs text-secondary border-t border-outline-variant/30 pt-2">
                     <span class="material-symbols-outlined text-[16px]">calendar_month</span>
-                    <span>{{ active_schedule.start_date|date:"d M Y" }} - {{ active_schedule.end_date|date:"d M Y" }}</span>
+                    <span>
+                        {% if active_schedule.date %}
+                            {{ active_schedule.date|date:"l, d M Y" }}
+                        {% else %}
+                            {{ active_schedule.start_date|date:"d M Y" }} - {{ active_schedule.end_date|date:"d M Y" }}
+                        {% endif %}
+                    </span>
                 </div>
             </div>
             {% else %}
             <div class="p-md bg-surface-container-low rounded-lg border border-outline-variant/50 text-center text-secondary">
                 <span class="material-symbols-outlined text-[32px] mb-xs opacity-50">calendar_month</span>
-                <p class="font-body-sm">Belum ada jadwal kerja aktif.</p>
+                <p class="font-body-sm">Belum ada jadwal kerja aktif untuk tanggal ini.</p>
             </div>
             {% endif %}
         </div>

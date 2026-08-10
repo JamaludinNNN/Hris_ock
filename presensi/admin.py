@@ -49,7 +49,7 @@ class AttendanceAdmin(admin.ModelAdmin):
 
 @admin.register(Schedule)
 class ScheduleAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'shift_name', 'start_time', 'end_time', 'start_date', 'end_date', 'created_at')
-    list_filter = ('shift_name', 'start_date', 'end_date')
+    list_display = ('employee', 'date', 'shift_name', 'is_off', 'start_time', 'end_time', 'start_date', 'end_date', 'created_at')
+    list_filter = ('is_off', 'shift_name', 'date', 'start_date')
     search_fields = ('employee__fullname', 'employee__employee_id', 'shift_name')
     raw_id_fields = ('employee',)

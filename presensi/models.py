@@ -121,13 +121,19 @@ class Schedule(models.Model):
         on_delete=models.CASCADE,
         related_name='schedules'
     )
+    date = models.DateField(null=True, blank=True)
     shift_name = models.CharField(max_length=100)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    start_date = models.DateField()
-    end_date = models.DateField()
+    is_off = models.BooleanField(default=False)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-date', '-start_date', 'employee__fullname']
+
     def __str__(self):
-        return f"{self.employee.fullname} - {self.shift_name} ({self.start_date} s/d {self.end_date})"
+        d_str = str(self.date) if self.date else f"{self.start_date} s/d {self.end_date}"
+        return f"{self.employee.fullname} - {self.shift_name} ({d_str})"
 

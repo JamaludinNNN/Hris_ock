@@ -1,96 +1,90 @@
+{% load static %}
 <style>
-    @media (max-width: 767.98px) {
-        main {
-            margin-left: 0 !important;
+    @media (max-width: 768px) {
+        body.sidebar-open {
+            overflow: hidden !important;
+        }
+
+        #sidebar {
+            width: 260px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
             padding-left: 12px !important;
             padding-right: 12px !important;
         }
+
         header {
             left: 0 !important;
         }
     }
 </style>
 
-<aside class="w-[260px] h-screen fixed left-0 top-0 bg-surface-container-lowest dark:bg-surface-dim border-r border-outline-variant dark:border-outline shadow-sm flex flex-col py-md z-50 transition-transform duration-300 -translate-x-full md:translate-x-0 overflow-y-auto overflow-x-hidden" id="sidebar">
+<aside
+    class="w-[260px] h-screen fixed left-0 top-0 bg-surface-container-lowest dark:bg-surface-dim border-r border-outline-variant dark:border-outline shadow-sm flex flex-col py-md z-50 transition-transform duration-300 -translate-x-full md:translate-x-0 overflow-y-auto overflow-x-hidden"
+    id="sidebar">
     <div class="px-md mb-lg flex justify-between items-center">
         <div>
             <h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">Attendance Pro</h1>
-            <p class="font-body-sm text-secondary">
+            <p class="text-body-sm text-secondary font-medium">
                 {% if request.user.role == 'admin' or request.user.is_superuser %}
-                    Enterprise HR
+                Enterprise HR
                 {% else %}
-                    Employee Portal
+                Employee Portal
                 {% endif %}
             </p>
         </div>
-        <button class="md:hidden material-symbols-outlined text-secondary hover:text-primary transition-all duration-200 active:scale-90" onclick="toggleSidebar(false)">close</button>
+        <button
+            class="md:hidden material-symbols-outlined text-secondary hover:text-primary transition-all duration-200 active:scale-90"
+            onclick="toggleSidebar(false)">close</button>
     </div>
     <nav class="flex-1 px-sm space-y-xs">
         <!-- Dashboard -->
-        {% if request.resolver_match.url_name == 'dashboard' %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'dashboard' %}">
-        {% else %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'dashboard' %}">
-        {% endif %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95"
+            href="{% url 'dashboard' %}">
             <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
             <span class="font-body-md text-body-md">Dashboard</span>
         </a>
-        
+
         <!-- Karyawan (Admin only) -->
         {% if request.user.role == 'admin' or request.user.is_superuser %}
-            {% if request.resolver_match.url_name == 'karyawan' or request.resolver_match.url_name == 'tambah_karyawan' %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'karyawan' %}">
-            {% else %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'karyawan' %}">
-            {% endif %}
-                <span class="material-symbols-outlined" data-icon="groups">groups</span>
-                <span class="font-body-md text-body-md">Karyawan</span>
-            </a>
-            
-            <!-- Registrasi Wajah (Admin only) -->
-            {% if request.resolver_match.url_name == 'registrasi' %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'registrasi' %}">
-            {% else %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'registrasi' %}">
-            {% endif %}
-                <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
-                <span class="font-body-md text-body-md">Registrasi Wajah</span>
-            </a>
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'karyawan' or request.resolver_match.url_name == 'tambah_karyawan' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95"
+            href="{% url 'karyawan' %}">
+            <span class="material-symbols-outlined" data-icon="groups">groups</span>
+            <span class="font-body-md text-body-md">Karyawan</span>
+        </a>
+
+        <!-- Registrasi Wajah (Admin only) -->
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'registrasi' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95"
+            href="{% url 'registrasi' %}">
+            <span class="material-symbols-outlined" data-icon="face_6">face_6</span>
+            <span class="font-body-md text-body-md">Registrasi Wajah</span>
+        </a>
         {% endif %}
-        
+
         <!-- Presensi -->
         {% if not request.user.role == 'admin' and not request.user.is_superuser and has_face_data is False %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95 cursor-pointer" onclick="showFaceRegistrationWarning()">
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95 cursor-pointer"
+            onclick="showFaceRegistrationWarning()">
             <span class="material-symbols-outlined" data-icon="timer">timer</span>
             <span class="font-body-md text-body-md">Presensi</span>
         </a>
         {% else %}
-            {% if request.resolver_match.url_name == 'presensi' %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'presensi' %}">
-            {% else %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'presensi' %}">
-            {% endif %}
-                <span class="material-symbols-outlined" data-icon="timer">timer</span>
-                <span class="font-body-md text-body-md">Presensi</span>
-            </a>
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'presensi' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95"
+            href="{% url 'presensi' %}">
+            <span class="material-symbols-outlined" data-icon="timer">timer</span>
+            <span class="font-body-md text-body-md">Presensi</span>
+        </a>
         {% endif %}
-        
+
         <!-- Laporan -->
-        {% if request.resolver_match.url_name == 'laporan' %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'laporan' %}">
-        {% else %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'laporan' %}">
-        {% endif %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'laporan' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95"
+            href="{% url 'laporan' %}">
             <span class="material-symbols-outlined" data-icon="assessment">assessment</span>
             <span class="font-body-md text-body-md">Laporan</span>
         </a>
 
         <!-- Jadwal Kerja -->
-        {% if request.resolver_match.url_name == 'jadwal' %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'jadwal' %}">
-        {% else %}
-        <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors duration-200 active:scale-95" href="{% url 'jadwal' %}">
-        {% endif %}
+        <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'jadwal' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors duration-200{% endif %} active:scale-95"
+            href="{% url 'jadwal' %}">
             <span class="material-symbols-outlined" data-icon="calendar_month">calendar_month</span>
             <span class="font-body-md text-body-md">Jadwal Kerja</span>
         </a>
@@ -98,16 +92,14 @@
     <div class="mt-auto px-md space-y-sm">
         <div class="pt-md border-t border-outline-variant space-y-xs">
             {% if request.user.role == 'admin' or request.user.is_superuser %}
-                {% if request.resolver_match.url_name == 'settings' %}
-                <a class="flex items-center gap-sm px-md py-sm rounded-lg bg-primary/10 text-primary font-semibold active:scale-95" href="{% url 'settings' %}">
-                {% else %}
-                <a class="flex items-center gap-sm px-md py-sm rounded-lg text-secondary hover:bg-surface-container transition-colors active:scale-95" href="{% url 'settings' %}">
-                {% endif %}
-                    <span class="material-symbols-outlined" data-icon="settings">settings</span>
-                    <span class="font-body-md text-body-md">Settings</span>
-                </a>
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg {% if request.resolver_match.url_name == 'settings' %}bg-primary/10 text-primary font-semibold{% else %}text-secondary hover:bg-surface-container transition-colors{% endif %} active:scale-95"
+                href="{% url 'settings' %}">
+                <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                <span class="font-body-md text-body-md">Settings</span>
+            </a>
             {% endif %}
-            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-error hover:bg-error-container transition-colors active:scale-95" href="{% url 'logout' %}">
+            <a class="flex items-center gap-sm px-md py-sm rounded-lg text-error hover:bg-error-container transition-colors active:scale-95"
+                href="{% url 'logout' %}">
                 <span class="material-symbols-outlined" data-icon="logout">logout</span>
                 <span class="font-body-md text-body-md">Logout</span>
             </a>
@@ -116,32 +108,42 @@
 </aside>
 
 <!-- Semi-transparent mobile backdrop overlay -->
-<div class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 md:hidden" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+<div class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300 md:hidden" id="sidebar-backdrop"
+    onclick="toggleSidebar(false)"></div>
 
 <!-- Custom Face Registration Warning Modal -->
 <div id="face-reg-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-sm md:p-md">
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeFaceRegModal()"></div>
-    <div class="relative bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="face-reg-modal-content">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeFaceRegModal()"></div>
+
+    <div class="relative bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 opacity-0 transition-all duration-300"
+        id="face-reg-modal-content">
         <!-- Header Image/Icon Area -->
         <div class="bg-amber-500/10 p-lg flex justify-center items-center relative">
             <div class="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
-            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <span class="material-symbols-outlined text-[40px] text-amber-500">face</span>
+            <div
+                class="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-600 animate-pulse">
+                <span class="material-symbols-outlined text-[48px]">no_photography</span>
             </div>
         </div>
-        <!-- Body -->
+
+        <!-- Body Content -->
         <div class="p-lg text-center">
             <h3 class="font-headline-md text-xl font-bold text-on-surface mb-xs">Registrasi Wajah Belum Selesai</h3>
             <p class="font-body-md text-secondary leading-relaxed">
-                Wajah Anda belum terdaftar pada sistem. Silakan lakukan <b>Registrasi Wajah</b> terlebih dahulu agar sistem dapat mengenali Anda saat melakukan presensi.
+                Wajah Anda belum terdaftar pada sistem. Silakan lakukan <b>Registrasi Wajah</b> terlebih dahulu agar
+                sistem dapat mengenali Anda saat melakukan presensi.
             </p>
         </div>
+
         <!-- Footer / Actions -->
-        <div class="p-md bg-surface-container-low flex gap-sm justify-end">
-            <button onclick="closeFaceRegModal()" class="px-md py-sm rounded-xl font-label-md text-secondary hover:bg-surface-container transition-colors focus:outline-none">
+        <div
+            class="p-md bg-surface-container-low flex justify-end items-center gap-sm border-t border-outline-variant/30">
+            <button onclick="closeFaceRegModal()"
+                class="px-md py-sm rounded-xl font-label-md text-secondary hover:bg-surface-container transition-colors focus:outline-none">
                 Batal
             </button>
-            <a href="{% url 'registrasi_wajah' %}" class="px-lg py-sm rounded-xl font-label-md font-bold bg-primary text-white hover:bg-primary/90 transition-colors shadow-md hover:shadow-lg focus:outline-none flex items-center gap-2">
+            <a href="{% url 'registrasi_wajah' %}"
+                class="px-lg py-sm rounded-xl font-label-md font-bold bg-primary text-white hover:bg-primary/90 transition-colors shadow-md hover:shadow-lg focus:outline-none flex items-center gap-2">
                 Daftar Sekarang <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
             </a>
         </div>
@@ -149,41 +151,42 @@
 </div>
 
 <script>
-    function toggleSidebar(open) {
+    function toggleSidebar(show) {
         const sidebar = document.getElementById('sidebar');
         const backdrop = document.getElementById('sidebar-backdrop');
-        if (sidebar && backdrop) {
-            if (open) {
-                sidebar.classList.remove('-translate-x-full');
-                backdrop.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                backdrop.classList.add('hidden');
-            }
+        const body = document.body;
+
+        if (show) {
+            sidebar.classList.remove('-translate-x-full');
+            backdrop.classList.remove('hidden');
+            body.classList.add('sidebar-open');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            backdrop.classList.add('hidden');
+            body.classList.remove('sidebar-open');
         }
     }
 
     function showFaceRegistrationWarning() {
         const modal = document.getElementById('face-reg-modal');
         const content = document.getElementById('face-reg-modal-content');
-        
+
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        
-        // Small delay to allow display:flex to apply before animating opacity/transform
+
         setTimeout(() => {
             content.classList.remove('scale-95', 'opacity-0');
             content.classList.add('scale-100', 'opacity-100');
         }, 10);
     }
-    
+
     function closeFaceRegModal() {
         const modal = document.getElementById('face-reg-modal');
         const content = document.getElementById('face-reg-modal-content');
-        
+
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
-        
+
         setTimeout(() => {
             modal.classList.remove('flex');
             modal.classList.add('hidden');

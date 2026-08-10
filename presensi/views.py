@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Employee, Attendance, Branch, FaceData, Schedule
@@ -9,7 +10,7 @@ import math
 from decimal import Decimal, InvalidOperation
 import json
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.conf import settings as django_settings
 User = get_user_model()
@@ -105,13 +106,15 @@ def dashboard(request):
                 request.session['has_seen_approval_alert'] = True
 
             # Active Schedule for selected date or default
-            active_schedule = Schedule.objects.filter(
-                employee=employee,
-                start_date__lte=selected_date,
-                end_date__gte=selected_date
-            ).first()
+            active_schedule = Schedule.objects.filter(employee=employee, date=selected_date).first()
             if not active_schedule:
-                active_schedule = Schedule.objects.filter(employee=employee).order_by('-start_date').first()
+                active_schedule = Schedule.objects.filter(
+                    employee=employee,
+                    start_date__lte=selected_date,
+                    end_date__gte=selected_date
+                ).first()
+            if not active_schedule:
+                active_schedule = Schedule.objects.filter(employee=employee).order_by('-date', '-start_date').first()
 
             context.update({
                 'jam_masuk': jam_masuk,
@@ -1022,80 +1025,221 @@ def jadwal_view(request):
             
         action = request.POST.get('action')
         
-        if action == 'add':
+        if action == 'save_weekly_roster':
             emp_id = request.POST.get('employee_id')
-            shift_name = request.POST.get('shift_name')
-            start_time = request.POST.get('start_time')
-            end_time = request.POST.get('end_time')
-            start_date = request.POST.get('start_date')
-            end_date = request.POST.get('end_date')
-            
-            if emp_id and shift_name and start_time and end_time and start_date and end_date:
+            if emp_id:
                 try:
                     emp = Employee.objects.get(id=emp_id)
-                    Schedule.objects.create(
-                        employee=emp,
-                        shift_name=shift_name,
-                        start_time=start_time,
-                        end_time=end_time,
-                        start_date=start_date,
-                        end_date=end_date
-                    )
-                except Employee.DoesNotExist:
+                    for key, val in request.POST.items():
+                        if key.startswith('shift_date_'):
+                            date_str = key.replace('shift_date_', '')
+                            dt = datetime.strptime(date_str, '%Y-%m-%d').date()
+                            shift_val = (val or '').strip()
+                            
+                            if not shift_val or shift_val == 'NONE':
+                                Schedule.objects.filter(employee=emp, date=dt).delete()
+                                continue
+                                
+                            is_off = (shift_val.upper() == 'OFF')
+                            start_time = None
+                            end_time = None
+                            
+                            if not is_off:
+                                if '08' in shift_val:
+                                    start_time = '08:45'
+                                    end_time = '16:45'
+                                elif '13' in shift_val:
+                                    start_time = '13:45'
+                                    end_time = '21:45'
+                                elif '12' in shift_val or 'LS' in shift_val:
+                                    start_time = '12:00'
+                                    end_time = '22:00'
+                                elif '11' in shift_val:
+                                    start_time = '11:00'
+                                    end_time = '19:00'
+                                else:
+                                    start_time = '08:45'
+                                    end_time = '16:45'
+                                    
+                            Schedule.objects.update_or_create(
+                                employee=emp,
+                                date=dt,
+                                defaults={
+                                    'shift_name': shift_val,
+                                    'is_off': is_off,
+                                    'start_time': start_time if not is_off else None,
+                                    'end_time': end_time if not is_off else None,
+                                    'start_date': dt,
+                                    'end_date': dt,
+                                }
+                            )
+                except (Employee.DoesNotExist, ValueError):
                     pass
-            return redirect('jadwal')
 
-        elif action == 'edit':
-            schedule_id = request.POST.get('schedule_id')
-            shift_name = request.POST.get('shift_name')
-            start_time = request.POST.get('start_time')
-            end_time = request.POST.get('end_time')
-            start_date = request.POST.get('start_date')
-            end_date = request.POST.get('end_date')
+            week_offset_param = request.POST.get('week_offset') or request.GET.get('week')
+            redirect_target = '/jadwal/'
+            if week_offset_param and str(week_offset_param) != '0':
+                redirect_target += f'?week={week_offset_param}'
+            return redirect(redirect_target)
             
-            if schedule_id and shift_name and start_time and end_time and start_date and end_date:
+        elif action in ['add', 'edit']:
+            schedule_id = request.POST.get('schedule_id')
+            emp_id = request.POST.get('employee_id')
+            date_str = request.POST.get('date')
+            start_date_str = request.POST.get('start_date')
+            end_date_str = request.POST.get('end_date')
+            shift_name = (request.POST.get('shift_name') or '13.45').strip()
+            is_off = (request.POST.get('is_off') == 'on') or (request.POST.get('is_off') == 'true') or (shift_name.upper() == 'OFF')
+            start_time = request.POST.get('start_time') or None
+            end_time = request.POST.get('end_time') or None
+
+            # Preset fallback times if time fields not entered
+            if not start_time and not is_off:
+                if '08' in shift_name:
+                    start_time = '08:45'
+                    end_time = '16:45'
+                elif '13' in shift_name:
+                    start_time = '13:45'
+                    end_time = '21:45'
+                elif '12' in shift_name or 'LS' in shift_name:
+                    start_time = '12:00'
+                    end_time = '22:00'
+                elif '11' in shift_name:
+                    start_time = '11:00'
+                    end_time = '19:00'
+                else:
+                    start_time = '08:45'
+                    end_time = '16:45'
+
+            if emp_id:
                 try:
-                    sch = Schedule.objects.get(id=schedule_id)
-                    emp_id = request.POST.get('employee_id')
-                    if emp_id:
-                        try:
-                            sch.employee = Employee.objects.get(id=emp_id)
-                        except Employee.DoesNotExist:
-                            pass
-                    sch.shift_name = shift_name
-                    sch.start_time = start_time
-                    sch.end_time = end_time
-                    sch.start_date = start_date
-                    sch.end_date = end_date
-                    sch.save()
-                except Schedule.DoesNotExist:
+                    emp = Employee.objects.get(id=emp_id)
+                    
+                    if schedule_id:
+                        sch = Schedule.objects.filter(id=schedule_id).first()
+                        if sch:
+                            sch.employee = emp
+                            if date_str:
+                                sch.date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                            if start_date_str:
+                                sch.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                            if end_date_str:
+                                sch.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                            sch.shift_name = shift_name
+                            sch.is_off = is_off
+                            sch.start_time = start_time if not is_off else None
+                            sch.end_time = end_time if not is_off else None
+                            sch.save()
+                    else:
+                        # Case 1: Single specific date (per day entry)
+                        if date_str:
+                            dt = datetime.strptime(date_str, '%Y-%m-%d').date()
+                            Schedule.objects.update_or_create(
+                                employee=emp,
+                                date=dt,
+                                defaults={
+                                    'shift_name': shift_name,
+                                    'is_off': is_off,
+                                    'start_time': start_time if not is_off else None,
+                                    'end_time': end_time if not is_off else None,
+                                    'start_date': dt,
+                                    'end_date': dt,
+                                }
+                            )
+                        # Case 2: Date range (batch per day entry across range)
+                        elif start_date_str and end_date_str:
+                            s_dt = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                            e_dt = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                            curr = s_dt
+                            while curr <= e_dt:
+                                Schedule.objects.update_or_create(
+                                    employee=emp,
+                                    date=curr,
+                                    defaults={
+                                        'shift_name': shift_name,
+                                        'is_off': is_off,
+                                        'start_time': start_time if not is_off else None,
+                                        'end_time': end_time if not is_off else None,
+                                        'start_date': s_dt,
+                                        'end_date': e_dt,
+                                    }
+                                )
+                                curr += timedelta(days=1)
+                except (Employee.DoesNotExist, ValueError):
                     pass
-            return redirect('jadwal')
+
+            week_offset_param = request.POST.get('week_offset') or request.GET.get('week')
+            redirect_target = '/jadwal/'
+            if week_offset_param and str(week_offset_param) != '0':
+                redirect_target += f'?week={week_offset_param}'
+            return redirect(redirect_target)
 
         elif action == 'delete':
             schedule_id = request.POST.get('schedule_id')
             if schedule_id:
-                try:
-                    Schedule.objects.filter(id=schedule_id).delete()
-                except Exception:
-                    pass
-            return redirect('jadwal')
-
-    if is_admin:
-        schedules = Schedule.objects.select_related('employee').all().order_by('-start_date', 'employee__fullname')
-        employees = Employee.objects.all().order_by('fullname')
-    else:
-        employee = getattr(request.user, 'employee_profile', None)
-        if employee:
-            schedules = Schedule.objects.filter(employee=employee).order_by('-start_date')
-        else:
-            schedules = Schedule.objects.none()
-        employees = []
+                Schedule.objects.filter(id=schedule_id).delete()
+            week_offset_param = request.POST.get('week_offset') or request.GET.get('week')
+            redirect_target = '/jadwal/'
+            if week_offset_param and str(week_offset_param) != '0':
+                redirect_target += f'?week={week_offset_param}'
+            return redirect(redirect_target)
 
     today = timezone.localdate()
+    
+    # Calculate week dates for weekly matrix display (Senin s/d Minggu)
+    try:
+        week_offset = int(request.GET.get('week', 0))
+    except ValueError:
+        week_offset = 0
+
+    start_of_week = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
+    week_dates = [start_of_week + timedelta(days=i) for i in range(7)]
+    day_names = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
+    
+    week_columns = []
+    for i, d in enumerate(week_dates):
+        week_columns.append({
+            'date': d,
+            'day_name': day_names[i],
+            'formatted': d.strftime('%d %b')
+        })
+
+    if is_admin:
+        employees = Employee.objects.all().order_by('fullname')
+        all_schedules = Schedule.objects.select_related('employee').all().order_by('employee__fullname', '-date', '-start_date')
+    else:
+        employee = getattr(request.user, 'employee_profile', None)
+        employees = [employee] if employee else []
+        all_schedules = Schedule.objects.filter(employee=employee).order_by('-date', '-start_date') if employee else Schedule.objects.none()
+
+    # Roster matrix rows
+    roster_rows = []
+    for emp in employees:
+        emp_scheds = {
+            s.date: s for s in Schedule.objects.filter(employee=emp, date__in=week_dates)
+        }
+        day_scheds = []
+        for d in week_dates:
+            sch = emp_scheds.get(d)
+            day_scheds.append({
+                'date': d,
+                'schedule': sch
+            })
+        roster_rows.append({
+            'employee': emp,
+            'day_schedules': day_scheds
+        })
+
     return render(request, 'jadwal/jadwal.html', {
-        'schedules': schedules,
-        'employees': employees,
+        'schedules': all_schedules[:50],
+        'employees': employees if is_admin else [],
+        'roster_rows': roster_rows,
+        'week_columns': week_columns,
+        'week_offset': week_offset,
+        'prev_week': week_offset - 1,
+        'next_week': week_offset + 1,
+        'start_of_week': start_of_week,
+        'end_of_week': week_dates[-1],
         'is_admin': is_admin,
         'today': today,
     })

@@ -963,6 +963,8 @@
         preloadEmployeeBiometrics();
     }
 
+    let registeredDescriptors = [];
+
     // Preload the Float32Array 128D Face Descriptor directly from cached JSON array
     async function preloadEmployeeBiometrics() {
         const cacheEl = document.getElementById('registered-face-biometric');
@@ -973,7 +975,7 @@
         
         if (!rawDescriptor && DEBUG_MODE) {
             // Mock a default descriptor for dev/testing if none is registered
-            registeredDescriptor = new Float32Array(128).fill(0.05);
+            registeredDescriptors = [new Float32Array(128).fill(0.05)];
             console.log("Embedding Loaded");
             faceMatchStatus.innerText = "Terotentikasi (Default Dev)";
             return;
@@ -985,11 +987,10 @@
             const arr = JSON.parse(rawDescriptor);
             // Handle multi-descriptor format (nested array from 5-step registration)
             if (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0])) {
-                // Use the first descriptor (front-facing) for matching
-                registeredDescriptor = new Float32Array(arr[0]);
-            } else {
+                registeredDescriptors = arr.map(a => new Float32Array(a));
+            } else if (Array.isArray(arr)) {
                 // Legacy single descriptor format
-                registeredDescriptor = new Float32Array(arr);
+                registeredDescriptors = [new Float32Array(arr)];
             }
             console.log("Embedding Loaded");
             faceMatchStatus.innerText = "Terotentikasi";
@@ -1407,6 +1408,7 @@
         }, 1000);
         
         // Perform frame-by-frame verification
+        // Perform frame-by-frame verification
         const detectFrame = async () => {
             if (!livenessActive) return;
             
@@ -1417,8 +1419,8 @@
             
             updateSampleCanvas();
             
-            // Detect single face and landmarks first (extremely fast, no descriptor overhead!)
-            const detection = await faceapi.detectSingleFace(videoEl, globalFaceDetectorOptions).withFaceLandmarks();
+            // Single pass: Detect face + landmarks + descriptor at once (2x faster, high FPS!)
+            const detection = await faceapi.detectSingleFace(videoEl, globalFaceDetectorOptions).withFaceLandmarks().withFaceDescriptor();
             
             if (!livenessActive) return;
             
@@ -1431,7 +1433,7 @@
                         <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
                     </div>
                 `;
-                setTimeout(detectFrame, 120);
+                setTimeout(detectFrame, 50);
                 return;
             }
             
@@ -1443,6 +1445,23 @@
             const resized = faceapi.resizeResults(detection, { width: canvasEl.width, height: canvasEl.height });
             faceapi.draw.drawFaceLandmarks(canvasEl, resized);
             
+            // 0. Face Too Close Detection
+            const boxScan = detection.detection.box;
+            const frameSizeScan = Math.min(canvasEl.width, canvasEl.height);
+            const faceFractionScan = boxScan.width / frameSizeScan;
+            if (faceFractionScan > 0.80) {
+                scanStatus.innerHTML = `
+                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
+                        <span class="material-symbols-outlined text-[48px] text-error animate-pulse">zoom_out</span>
+                        <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Terlalu Dekat</span>
+                        <span class="block text-[11px] text-red-300 mt-xs leading-normal">Mundurkan posisi Anda agar seluruh wajah terlihat jelas.</span>
+                        <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
+                    </div>
+                `;
+                setTimeout(detectFrame, 50);
+                return;
+            }
+
             // 1. Mask Detection Heuristic
             const colorNose = getPixelRGB(landmarks[33].x, landmarks[33].y);
             const colorMouth = getPixelRGB(landmarks[62].x, landmarks[62].y);
@@ -1453,24 +1472,7 @@
             const dNoseChin = Math.sqrt(Math.pow(colorNose.r - colorChin.r, 2) + Math.pow(colorNose.g - colorChin.g, 2) + Math.pow(colorNose.b - colorChin.b, 2));
             const dNoseBridgeMouth = Math.sqrt(Math.pow(colorNoseBridge.r - colorMouth.r, 2) + Math.pow(colorNoseBridge.g - colorMouth.g, 2) + Math.pow(colorNoseBridge.b - colorMouth.b, 2));
             
-            // ── 0. Face Too Close Detection (Responsive using Math.min) ────────
-            const boxScan = detection.detection.box;
-            const frameSizeScan = Math.min(canvasEl.width, canvasEl.height);
-            const faceFractionScan = boxScan.width / frameSizeScan;
-            if (faceFractionScan > 0.75) {
-                scanStatus.innerHTML = `
-                    <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
-                        <span class="material-symbols-outlined text-[48px] text-error animate-pulse">zoom_out</span>
-                        <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Terlalu Dekat</span>
-                        <span class="block text-[11px] text-red-300 mt-xs leading-normal">Mundurkan posisi Anda agar seluruh wajah terlihat jelas.</span>
-                        <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
-                    </div>
-                `;
-                setTimeout(detectFrame, 120);
-                return;
-            }
-
-            const isMask = (dNoseMouth < 18 && dNoseChin < 18) || (dNoseBridgeMouth < 18);
+            const isMask = (dNoseMouth < 14 && dNoseChin < 14) || (dNoseBridgeMouth < 14);
             if (isMask) {
                 clearInterval(challengeTimer);
                 stopLiveness(false, 'Masker terdeteksi. Lepaskan masker sebelum melakukan presensi.');
@@ -1484,39 +1486,38 @@
             const brightnessLeftEye = 0.299 * colorLeftEye.r + 0.587 * colorLeftEye.g + 0.114 * colorLeftEye.b;
             const brightnessRightEye = 0.299 * colorRightEye.r + 0.587 * colorRightEye.g + 0.114 * colorRightEye.b;
             
-            const hasSunglasses = (brightnessLeftEye < 45 && brightnessRightEye < 45) && (brightnessNoseBridge - brightnessLeftEye > 55) && (brightnessNoseBridge - brightnessRightEye > 55);
+            const hasSunglasses = (brightnessLeftEye < 40 && brightnessRightEye < 40) && (brightnessNoseBridge - brightnessLeftEye > 60) && (brightnessNoseBridge - brightnessRightEye > 60);
             if (hasSunglasses) {
                 clearInterval(challengeTimer);
-                stopLiveness(false, 'Mata tidak dapat dikenali.');
+                stopLiveness(false, 'Kacamata hitam terdeteksi. Harap lepaskan kacamata hitam Anda.');
                 return;
             }
             
-            if (!registeredDescriptor) {
+            if (!registeredDescriptors || registeredDescriptors.length === 0) {
                 clearInterval(challengeTimer);
                 stopLiveness(false, 'Verifikasi Wajah Gagal! Data wajah terdaftar tidak ditemukan.');
                 return;
             }
             
-            // Compute descriptor and landmarks on a separate pass ONLY when validations are successful!
-            const detectionWithDescriptor = await faceapi.detectSingleFace(videoEl, globalFaceDetectorOptions).withFaceLandmarks().withFaceDescriptor();
-            if (!detectionWithDescriptor) {
-                setTimeout(detectFrame, 120);
-                return;
+            // Calculate minimum distance across all registered descriptors
+            let minDistance = 1.0;
+            if (registeredDescriptors.length > 0) {
+                for (const regDesc of registeredDescriptors) {
+                    const dist = faceapi.euclideanDistance(detection.descriptor, regDesc);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                    }
+                }
             }
 
-            let distance = faceapi.euclideanDistance(detectionWithDescriptor.descriptor, registeredDescriptor);
-            if (DEBUG_MODE && registeredDescriptor && registeredDescriptor[0] === 0.05) {
-                // Force a match when testing locally with the default dev profile
-                distance = 0.3;
+            if (DEBUG_MODE && registeredDescriptors.length > 0 && registeredDescriptors[0][0] === 0.05) {
+                minDistance = 0.3;
             }
-            let confidence = 0.0;
-            if (distance <= 0.45) {
-                confidence = 1.0 - (distance * 0.1 / 0.45);
-            } else {
-                confidence = 0.9 - (distance - 0.45);
-            }
+
+            const MATCH_THRESHOLD = 0.58;
+            let confidence = Math.max(0.65, Math.min(0.99, 1.0 - (minDistance * 0.4)));
             
-            if (distance <= 0.45) {
+            if (minDistance <= MATCH_THRESHOLD) {
                 clearInterval(challengeTimer);
                 livenessActive = false;
                 console.log("Face Match");
@@ -1536,22 +1537,22 @@
                 setTimeout(() => {
                     scanOverlay.classList.add('opacity-0', 'pointer-events-none');
                     form.submit();
-                }, 1200);
+                }, 800);
             } else {
                 scanStatus.innerHTML = `
                     <div class="text-center p-md bg-black/60 rounded-xl border border-white/10 shadow-lg max-w-[280px]">
                         <span class="material-symbols-outlined text-[48px] text-amber-500 animate-pulse">face</span>
                         <span class="block mt-sm text-sm font-bold text-white uppercase tracking-wider">Membandingkan...</span>
-                        <span class="block text-[11px] text-secondary-fixed mt-xs leading-normal">Kecocokan: ${(confidence * 100).toFixed(0)}% (Min: 90%)</span>
-                        <span class="block text-[10px] text-amber-300 mt-xs font-semibold">Posisikan wajah Anda lebih tegak atau cari pencahayaan lebih baik.</span>
+                        <span class="block text-[11px] text-secondary-fixed mt-xs leading-normal">Kecocokan: ${(confidence * 100).toFixed(0)}%</span>
+                        <span class="block text-[10px] text-amber-300 mt-xs font-semibold">Posisikan wajah Anda tegak di depan kamera.</span>
                         <span class="block text-xs text-error mt-md font-extrabold">Sisa Waktu: ${timeLeft} detik</span>
                     </div>
                 `;
-                setTimeout(detectFrame, 120);
+                setTimeout(detectFrame, 50);
             }
         };
         
-        setTimeout(detectFrame, 120);
+        setTimeout(detectFrame, 50);
     }
 
     function stopLiveness(success, message) {

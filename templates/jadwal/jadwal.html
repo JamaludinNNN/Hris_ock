@@ -126,16 +126,18 @@
             <h2 class="text-headline-lg font-headline-lg text-on-surface">Jadwal Kerja & Rotasi Shift</h2>
             <p class="text-body-md text-on-surface-variant mt-1">
                 {% if is_admin %}
-                    Atur dan kelola penugasan shift kerja karyawan (rotasi berkala/3 mingguan).
+                    Atur roster shift mingguan karyawan toko secara instan dan praktis.
                 {% else %}
                     Daftar jadwal kerja dan jam operasional shift Anda.
                 {% endif %}
             </p>
         </div>
         {% if is_admin %}
-        <button onclick="openAddModal()" class="bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md flex items-center gap-2 shadow-lg hover:bg-primary-container transition-all active:scale-95 w-full md:w-auto justify-center font-bold">
-            <span class="material-symbols-outlined">add_task</span> Tambah Jadwal Shift
-        </button>
+        <div class="flex flex-col sm:flex-row gap-sm w-full md:w-auto">
+            <button onclick="openWeeklyRosterModal()" class="bg-primary text-on-primary px-5 py-3 rounded-xl font-label-md flex items-center justify-center gap-2 shadow-lg hover:bg-primary-container transition-all active:scale-95 font-bold">
+                <span class="material-symbols-outlined">edit_calendar</span> Input Roster 1 Minggu Karyawan
+            </button>
+        </div>
         {% endif %}
     </div>
 
@@ -157,7 +159,7 @@
             </div>
             <div>
                 <p class="text-body-sm text-secondary font-medium">Sistem Penjadwalan</p>
-                <h3 class="text-body-md font-bold text-green-800">Shift Rotasi Flexible</h3>
+                <h3 class="text-body-md font-bold text-green-800">Shift Rotasi Mingguan</h3>
             </div>
         </div>
 
@@ -172,14 +174,118 @@
         </div>
     </div>
 
+    <!-- Roster Matrix Table (Fast Inline Quick Select - Format Toko Old Chang Kee) -->
+    <div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden mb-lg">
+        <div class="p-md border-b border-outline-variant/30 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-sm bg-primary/5">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[24px]">grid_on</span>
+                <h4 class="font-headline-md text-body-lg font-bold text-primary">Matriks Roster Shift Toko (1 Minggu)</h4>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="?week={{ prev_week }}" class="px-3 py-1 bg-surface-container hover:bg-surface-container-high rounded-lg text-xs font-bold transition-all flex items-center gap-0.5" title="Minggu Sebelumnya">
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span> Lalu
+                </a>
+                {% if week_offset != 0 %}
+                <a href="{% url 'jadwal' %}" class="px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all" title="Kembali ke Minggu Ini">
+                    Minggu Ini
+                </a>
+                {% endif %}
+                <span class="text-xs font-bold text-on-surface px-3 py-1 bg-surface-container rounded-lg">
+                    Periode: {{ start_of_week|date:"d M" }} - {{ end_of_week|date:"d M Y" }}
+                </span>
+                <a href="?week={{ next_week }}" class="px-3 py-1 bg-surface-container hover:bg-surface-container-high rounded-lg text-xs font-bold transition-all flex items-center gap-0.5" title="Minggu Depan">
+                    Lanjut <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="roster-matrix-table">
+                <thead>
+                    <tr class="bg-surface-container border-b border-outline-variant/50 text-xs font-bold uppercase tracking-wider text-secondary">
+                        <th class="px-3 py-3 border-r border-outline-variant/30 w-10 text-center">NO</th>
+                        <th class="px-3 py-3 border-r border-outline-variant/30 min-w-[130px]">NAMA</th>
+                        <th class="px-3 py-3 border-r border-outline-variant/30 min-w-[90px]">POSISI</th>
+                        {% for col in week_columns %}
+                        <th class="px-2 py-3 border-r border-outline-variant/30 text-center min-w-[115px] {% if col.date == today %}bg-primary/10 text-primary font-black{% endif %}">
+                            <div class="font-bold text-on-surface">{{ col.date|date:"d-b-y" }}</div>
+                            <div class="text-[11px] font-semibold uppercase {% if col.day_name == 'Minggu' %}text-red-500{% else %}text-secondary{% endif %}">{{ col.day_name }}</div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-variant/30 text-sm">
+                    {% for row in roster_rows %}
+                    <tr class="hover:bg-surface-container-low transition-colors">
+                        <td class="px-3 py-2 border-r border-outline-variant/30 text-center font-bold text-secondary text-xs">{{ forloop.counter }}</td>
+                        <td class="px-3 py-2 border-r border-outline-variant/30 font-bold text-on-surface text-xs">{{ row.employee.fullname }}</td>
+                        <td class="px-3 py-2 border-r border-outline-variant/30 text-[11px] font-semibold text-secondary uppercase">{{ row.employee.position }}</td>
+                        
+                        {% for day in row.day_schedules %}
+                        <td class="px-1.5 py-2 border-r border-outline-variant/30 text-center">
+                            {% if is_admin %}
+                            <!-- Fast Inline Dropdown -->
+                            <form method="POST" action="{% url 'jadwal' %}" class="inline-block w-full">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="save_weekly_roster">
+                                <input type="hidden" name="employee_id" value="{{ row.employee.id }}">
+                                <input type="hidden" name="week_offset" value="{{ week_offset }}">
+                                <select name="shift_date_{{ day.date|date:'Y-m-d' }}" onchange="this.form.submit()" 
+                                        class="w-full px-1 py-1 rounded-md text-xs font-bold text-center outline-none border transition-all cursor-pointer
+                                               {% if day.schedule.is_off or day.schedule.shift_name.upper == 'OFF' %}bg-red-600 text-white border-red-700
+                                               {% elif day.schedule.shift_name %}bg-primary/10 text-primary border-primary/30
+                                               {% else %}bg-surface-container text-secondary border-outline-variant/30 hover:border-primary{% endif %}">
+                                    <option value="NONE" {% if not day.schedule %}selected{% endif %}>- (Kosong)</option>
+                                    <option value="08.45" {% if day.schedule.shift_name == '08.45' %}selected{% endif %}>08.45</option>
+                                    <option value="13.45" {% if day.schedule.shift_name == '13.45' %}selected{% endif %}>13.45</option>
+                                    <option value="12.00/LS" {% if day.schedule.shift_name == '12.00/LS' %}selected{% endif %}>12.00/LS</option>
+                                    <option value="11.00" {% if day.schedule.shift_name == '11.00' %}selected{% endif %}>11.00</option>
+                                    <option value="OFF" {% if day.schedule.is_off or day.schedule.shift_name.upper == 'OFF' %}selected{% endif %}>OFF</option>
+                                </select>
+                            </form>
+                            {% else %}
+                                {% if day.schedule %}
+                                    {% if day.schedule.is_off or day.schedule.shift_name.upper == 'OFF' %}
+                                        <span class="inline-block px-2 py-0.5 rounded bg-red-600 text-white font-bold text-xs">OFF</span>
+                                    {% else %}
+                                        <span class="inline-block px-2 py-0.5 rounded bg-primary/10 text-primary font-bold text-xs">{{ day.schedule.shift_name }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-xs text-secondary opacity-40">-</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-xl text-secondary">
+                            <span class="material-symbols-outlined text-[48px] block mb-2 opacity-40">group_off</span>
+                            Belum ada data karyawan.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     {% if is_admin %}
-    <!-- Admin View: Schedule List Table -->
-    <div class="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
         <div class="p-md border-b border-outline-variant/30 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-sm">
-            <h4 class="font-headline-md text-body-lg font-bold text-on-surface">Daftar Jadwal Shift Karyawan</h4>
-            <div class="relative w-full sm:w-72">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
-                <input type="text" id="search-schedule-input" placeholder="Cari nama karyawan / shift..." onkeyup="filterSchedules()" class="w-full pl-9 pr-4 py-2 rounded-lg border border-outline-variant text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+            <h4 class="font-headline-md text-body-lg font-bold text-on-surface">Daftar Semua Entri Shift Karyawan</h4>
+            <div class="flex flex-col sm:flex-row items-center gap-sm w-full sm:w-auto">
+                <!-- Filter Dropdown Per User / Karyawan -->
+                <select id="filter-employee-select" onchange="filterSchedules()" class="w-full sm:w-56 px-3 py-2 rounded-lg border border-outline-variant text-body-sm font-bold bg-surface-container-lowest focus:border-primary outline-none">
+                    <option value="">-- Semua Karyawan --</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}">{{ emp.fullname }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="relative w-full sm:w-60">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+                    <input type="text" id="search-schedule-input" placeholder="Cari shift..." onkeyup="filterSchedules()" class="w-full pl-9 pr-4 py-2 rounded-lg border border-outline-variant text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                </div>
             </div>
         </div>
         
@@ -190,14 +296,14 @@
                         <th class="px-md py-3 text-label-md text-secondary">KARYAWAN</th>
                         <th class="px-md py-3 text-label-md text-secondary">NAMA SHIFT</th>
                         <th class="px-md py-3 text-label-md text-secondary">JAM KERJA</th>
-                        <th class="px-md py-3 text-label-md text-secondary">PERIODE TANGGAL</th>
+                        <th class="px-md py-3 text-label-md text-secondary">TANGGAL SHIFT</th>
                         <th class="px-md py-3 text-label-md text-secondary">STATUS</th>
                         <th class="px-md py-3 text-label-md text-secondary text-right pr-6">AKSI</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-outline-variant/30">
                     {% for sch in schedules %}
-                    <tr class="schedule-row hover:bg-surface-container-low transition-colors" data-name="{{ sch.employee.fullname }}" data-shift="{{ sch.shift_name }}">
+                    <tr class="schedule-row hover:bg-surface-container-low transition-colors" data-empid="{{ sch.employee.id }}" data-name="{{ sch.employee.fullname }}" data-shift="{{ sch.shift_name }}">
                         <td class="px-md py-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold shadow-sm">
@@ -210,48 +316,55 @@
                             </div>
                         </td>
                         <td class="px-md py-4 font-semibold text-body-sm text-primary">
+                            {% if sch.is_off or sch.shift_name.upper == 'OFF' %}
+                            <span class="px-2.5 py-1 rounded-full bg-red-600 text-white text-xs font-bold uppercase">OFF / Libur</span>
+                            {% else %}
                             <span class="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">{{ sch.shift_name }}</span>
+                            {% endif %}
                         </td>
                         <td class="px-md py-4 font-body-sm text-on-surface">
+                            {% if sch.is_off or sch.shift_name.upper == 'OFF' %}
+                            <span class="text-secondary italic">Libur / Off Duty</span>
+                            {% else %}
                             <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-[18px] text-secondary">schedule</span>
                                 {{ sch.start_time|time:"H:i" }} - {{ sch.end_time|time:"H:i" }} WIB
                             </span>
+                            {% endif %}
                         </td>
-                        <td class="px-md py-4 font-body-sm text-on-surface-variant">
-                            {{ sch.start_date|date:"d M Y" }} s/d {{ sch.end_date|date:"d M Y" }}
+                        <td class="px-md py-4 font-body-sm text-on-surface-variant font-bold">
+                            {% if sch.date %}
+                                {{ sch.date|date:"l, d M Y" }}
+                            {% else %}
+                                {{ sch.start_date|date:"d M Y" }} s/d {{ sch.end_date|date:"d M Y" }}
+                            {% endif %}
                         </td>
                         <td class="px-md py-4">
-                            {% if sch.start_date <= today and sch.end_date >= today %}
+                            {% if sch.date == today or sch.start_date <= today and sch.end_date >= today %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                                <span class="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5 animate-pulse"></span> Shift Aktif
+                                <span class="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5 animate-pulse"></span> Shift Hari Ini
                             </span>
-                            {% elif sch.start_date > today %}
+                            {% elif sch.date > today or sch.start_date > today %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
                                 <span class="w-1.5 h-1.5 rounded-full bg-blue-600 mr-1.5"></span> Akan Datang
                             </span>
                             {% else %}
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-container text-secondary">
-                                Selesai
+                                Lampau
                             </span>
                             {% endif %}
                         </td>
                         <td class="px-md py-4 text-right pr-6">
-                            <div class="flex items-center justify-end gap-1">
-                                <button onclick="openEditModal('{{ sch.id }}', '{{ sch.employee.id }}', '{{ sch.shift_name|escapejs }}', '{{ sch.start_time|time:"H:i" }}', '{{ sch.end_time|time:"H:i" }}', '{{ sch.start_date|date:"Y-m-d" }}', '{{ sch.end_date|date:"Y-m-d" }}')" class="p-2 text-outline hover:text-primary hover:bg-primary/5 rounded-lg transition-all" title="Edit Shift">
-                                    <span class="material-symbols-outlined text-[20px]">edit</span>
-                                </button>
-                                <button onclick="confirmDelete('{{ sch.id }}', '{{ sch.employee.fullname|escapejs }}', '{{ sch.shift_name|escapejs }}')" class="p-2 text-outline hover:text-error hover:bg-error/5 rounded-lg transition-all" title="Hapus Shift">
-                                    <span class="material-symbols-outlined text-[20px]">delete</span>
-                                </button>
-                            </div>
+                            <button onclick="confirmDelete('{{ sch.id }}', '{{ sch.employee.fullname|escapejs }}', '{{ sch.shift_name|escapejs }}')" class="p-2 text-outline hover:text-error hover:bg-error/5 rounded-lg transition-all" title="Hapus Shift">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="6" class="text-center py-xl text-secondary">
                             <span class="material-symbols-outlined text-[48px] block mb-2 opacity-40">calendar_today</span>
-                            Belum ada jadwal shift karyawan yang ditambahkan.
+                            Belum ada jadwal shift karyawan.
                         </td>
                     </tr>
                     {% endfor %}
@@ -259,129 +372,80 @@
             </table>
         </div>
     </div>
-
-    {% else %}
-    <!-- Karyawan View: Employee's Schedule List -->
-    <div class="space-y-md">
-        <h4 class="font-headline-md text-headline-md font-bold text-on-surface">Jadwal Shift Kerja Saya</h4>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-            {% for sch in schedules %}
-            <div class="bg-surface-container-lowest p-md rounded-2xl border {% if sch.start_date <= today and sch.end_date >= today %}border-primary/40 shadow-md ring-2 ring-primary/20{% else %}border-outline-variant/30 shadow-sm{% endif %} space-y-md relative overflow-hidden">
-                {% if sch.start_date <= today and sch.end_date >= today %}
-                <div class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">Shift Aktif</div>
-                {% endif %}
-
-                <div class="flex items-center gap-sm">
-                    <span class="p-2.5 rounded-xl {% if sch.start_date <= today and sch.end_date >= today %}bg-primary/10 text-primary{% else %}bg-surface-container text-secondary{% endif %}">
-                        <span class="material-symbols-outlined text-[24px]">schedule</span>
-                    </span>
-                    <div>
-                        <h4 class="font-bold text-on-surface text-lg">{{ sch.shift_name }}</h4>
-                        <p class="text-xs text-secondary">Jam Shift Operasional</p>
-                    </div>
-                </div>
-
-                <div class="p-sm bg-surface-container-low rounded-xl flex items-center justify-around border border-outline-variant/30 text-center">
-                    <div>
-                        <span class="text-[11px] text-secondary font-bold uppercase tracking-wider block">Jam Masuk</span>
-                        <span class="font-bold text-on-surface text-base text-primary">{{ sch.start_time|time:"H:i" }} WIB</span>
-                    </div>
-                    <div class="w-px h-8 bg-outline-variant/40"></div>
-                    <div>
-                        <span class="text-[11px] text-secondary font-bold uppercase tracking-wider block">Jam Pulang</span>
-                        <span class="font-bold text-on-surface text-base text-tertiary">{{ sch.end_time|time:"H:i" }} WIB</span>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 text-xs text-secondary border-t border-outline-variant/30 pt-md">
-                    <span class="material-symbols-outlined text-[18px]">calendar_month</span>
-                    <span class="font-medium">Periode: {{ sch.start_date|date:"d M Y" }} s/d {{ sch.end_date|date:"d M Y" }}</span>
-                </div>
-            </div>
-            {% empty %}
-            <div class="col-span-full bg-surface-container-lowest p-xl rounded-2xl border border-outline-variant/30 text-center text-secondary">
-                <span class="material-symbols-outlined text-[56px] block mb-2 opacity-30">event_busy</span>
-                <h4 class="font-bold text-lg text-on-surface mb-1">Belum Ada Jadwal Shift</h4>
-                <p class="text-body-sm text-secondary">Admin belum menetapkan jadwal shift untuk akun Anda.</p>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
     {% endif %}
 </main>
 
 {% if is_admin %}
-<!-- Modal Tambah/Edit Jadwal Shift -->
-<div id="schedule-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
-    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-md md:p-lg w-full max-w-lg shadow-2xl transform scale-95 transition-all duration-300 mx-4" id="modal-card">
+<!-- MODAL UTAMA: Input Roster 1 Minggu Karyawan (1 Klik untuk 7 Hari) -->
+<div id="weekly-roster-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-md md:p-lg w-full max-w-2xl shadow-2xl transform scale-95 transition-all duration-300 mx-4 max-h-[90vh] overflow-y-auto" id="weekly-modal-card">
         <div class="flex justify-between items-center mb-md border-b border-outline-variant pb-sm">
-            <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm font-bold" id="modal-title">
-                <span class="material-symbols-outlined text-primary text-[28px]">calendar_add_on</span>
-                Tambah Jadwal Shift
-            </h3>
-            <button onclick="closeModal()" class="material-symbols-outlined text-secondary hover:text-primary transition-colors">close</button>
+            <div>
+                <h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm font-bold">
+                    <span class="material-symbols-outlined text-primary text-[28px]">edit_calendar</span>
+                    Input Roster Shift 1 Minggu
+                </h3>
+                <p class="text-xs text-secondary">Isi shift karyawan untuk 7 hari berturut-turut ({{ start_of_week|date:"d M" }} - {{ end_of_week|date:"d M Y" }}) dalam satu tampilan.</p>
+            </div>
+            <button onclick="closeWeeklyRosterModal()" class="material-symbols-outlined text-secondary hover:text-primary transition-colors">close</button>
         </div>
 
-        <form method="POST" action="{% url 'jadwal' %}" class="space-y-md" id="schedule-form">
+        <form method="POST" action="{% url 'jadwal' %}" class="space-y-md">
             {% csrf_token %}
-            <input type="hidden" name="action" id="form-action" value="add">
-            <input type="hidden" name="schedule_id" id="form-schedule-id">
+            <input type="hidden" name="action" value="save_weekly_roster">
+            <input type="hidden" name="week_offset" value="{{ week_offset }}">
 
+            <!-- Pilih Karyawan -->
             <div>
-                <label class="block font-label-md text-on-surface-variant mb-xs font-semibold">Pilih Karyawan</label>
-                <select name="employee_id" id="form-employee-id" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
-                    <option value="">-- Pilih Karyawan --</option>
+                <label class="block font-label-md text-on-surface-variant mb-xs font-bold">Pilih Karyawan</label>
+                <select name="employee_id" id="weekly-employee-id" required class="w-full px-md py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm font-bold shadow-sm">
+                    <option value="">-- Pilih Karyawan Toko --</option>
                     {% for emp in employees %}
-                    <option value="{{ emp.id }}">{{ emp.fullname }} (NIK: {{ emp.employee_id }}) - {{ emp.division }}</option>
+                    <option value="{{ emp.id }}">{{ emp.fullname }} ({{ emp.position }})</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div>
-                <label class="block font-label-md text-on-surface-variant mb-xs font-semibold">Nama Shift</label>
-                <input type="text" name="shift_name" id="form-shift-name" placeholder="Misal: Shift Pagi (Toko A) / Shift Siang" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
-                
-                <!-- Quick Preset Buttons -->
-                <div class="flex flex-wrap gap-xs mt-xs">
-                    <span class="text-[11px] text-secondary self-center mr-1">Preset:</span>
-                    <button type="button" onclick="setPreset('Shift Pagi', '08:00', '16:00')" class="px-2 py-0.5 rounded bg-surface-container text-[11px] hover:bg-primary/10 hover:text-primary transition-colors">Pagi (08-16)</button>
-                    <button type="button" onclick="setPreset('Shift Siang', '14:00', '22:00')" class="px-2 py-0.5 rounded bg-surface-container text-[11px] hover:bg-primary/10 hover:text-primary transition-colors">Siang (14-22)</button>
-                    <button type="button" onclick="setPreset('Shift Malam', '22:00', '06:00')" class="px-2 py-0.5 rounded bg-surface-container text-[11px] hover:bg-primary/10 hover:text-primary transition-colors">Malam (22-06)</button>
+            <!-- Bantuan Fast Set Button -->
+            <div class="p-sm bg-primary/5 rounded-xl border border-primary/10 flex flex-wrap items-center justify-between gap-sm">
+                <span class="text-xs font-bold text-primary">Fast Preset (Isi Semua Hari):</span>
+                <div class="flex flex-wrap gap-xs">
+                    <button type="button" onclick="setAllWeeklyShifts('13.45')" class="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition-all">Set Semua 13.45</button>
+                    <button type="button" onclick="setAllWeeklyShifts('08.45')" class="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition-all">Set Semua 08.45</button>
+                    <button type="button" onclick="setAllWeeklyShifts('12.00/LS')" class="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition-all">Set Semua 12.00/LS</button>
+                    <button type="button" onclick="setAllWeeklyShifts('OFF')" class="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-600 hover:text-white rounded-lg text-xs font-bold transition-all">Set Semua OFF</button>
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-md">
-                <div>
-                    <label class="block font-label-md text-on-surface-variant mb-xs font-semibold">Jam Masuk</label>
-                    <input type="time" name="start_time" id="form-start-time" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
+            <!-- List 7 Hari Roster -->
+            <div class="space-y-sm border border-outline-variant/30 rounded-xl p-sm bg-surface-container-low">
+                {% for col in week_columns %}
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 bg-surface-container-lowest rounded-lg border border-outline-variant/30 gap-2">
+                    <div class="flex items-center gap-2 min-w-[140px]">
+                        <span class="w-6 h-6 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">{{ forloop.counter }}</span>
+                        <div>
+                            <span class="font-bold text-sm text-on-surface block">{{ col.day_name }}</span>
+                            <span class="text-[11px] text-secondary">{{ col.date|date:"d M Y" }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full sm:w-auto flex-1 max-w-xs">
+                        <select name="shift_date_{{ col.date|date:'Y-m-d' }}" class="weekly-shift-select w-full px-md py-1.5 rounded-lg border border-outline-variant text-body-sm font-bold outline-none focus:border-primary">
+                            <option value="NONE">- Kosong (Tidak Ada Shift)</option>
+                            <option value="08.45">08.45 (08:45 - 16:45)</option>
+                            <option value="13.45" selected>13.45 (13:45 - 21:45)</option>
+                            <option value="12.00/LS">12.00/LS (12:00 - 22:00)</option>
+                            <option value="11.00">11.00 (11:00 - 19:00)</option>
+                            <option value="OFF">OFF (Hari Libur)</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block font-label-md text-on-surface-variant mb-xs font-semibold">Jam Pulang</label>
-                    <input type="time" name="end_time" id="form-end-time" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-md">
-                <div>
-                    <label class="block font-label-md text-on-surface-variant mb-xs font-semibold">Tanggal Mulai</label>
-                    <input type="date" name="start_date" id="form-start-date" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
-                </div>
-                <div>
-                    <label class="block font-label-md text-on-surface-variant mb-xs font-semibold">Tanggal Selesai</label>
-                    <input type="date" name="end_date" id="form-end-date" required class="w-full px-md py-sm rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-surface-container-lowest text-on-surface text-body-sm">
-                </div>
-            </div>
-
-            <!-- Fast set 3 weeks duration helper -->
-            <div class="flex items-center justify-between text-xs bg-primary/5 p-sm rounded-xl border border-primary/10">
-                <span class="text-secondary font-medium">Rotasi otomatis 3 Minggu dari Tanggal Mulai?</span>
-                <button type="button" onclick="set3WeeksDuration()" class="px-2.5 py-1 bg-primary text-white rounded-lg font-bold hover:bg-primary-container transition-colors">Set 3 Minggu</button>
+                {% endfor %}
             </div>
 
             <div class="pt-md border-t border-outline-variant/30 flex gap-sm justify-end items-center">
-                <button type="button" onclick="closeModal()" class="px-md py-sm border border-outline text-secondary rounded-lg font-label-md hover:bg-surface-container transition-all">Batal</button>
-                <button type="submit" class="px-xl py-sm bg-primary text-on-primary rounded-lg font-label-md shadow-sm hover:bg-primary-container transition-all font-bold">Simpan Jadwal</button>
+                <button type="button" onclick="closeWeeklyRosterModal()" class="px-md py-sm border border-outline text-secondary rounded-lg font-label-md hover:bg-surface-container transition-all">Batal</button>
+                <button type="submit" class="px-xl py-sm bg-primary text-on-primary rounded-xl font-label-md shadow-md hover:bg-primary-container transition-all font-bold">Simpan Roster 1 Minggu</button>
             </div>
         </form>
     </div>
@@ -392,78 +456,35 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="schedule_id" id="delete-schedule-id">
+    <input type="hidden" name="week_offset" value="{{ week_offset }}">
 </form>
 
 <script>
-    const modal = document.getElementById('schedule-modal');
-    const modalCard = document.getElementById('modal-card');
-    const modalTitle = document.getElementById('modal-title');
+    const weeklyModal = document.getElementById('weekly-roster-modal');
+    const weeklyModalCard = document.getElementById('weekly-modal-card');
 
-    function openAddModal() {
-        document.getElementById('form-action').value = 'add';
-        document.getElementById('form-schedule-id').value = '';
-        document.getElementById('form-employee-id').value = '';
-        document.getElementById('form-shift-name').value = '';
-        document.getElementById('form-start-time').value = '08:00';
-        document.getElementById('form-end-time').value = '17:00';
-        
-        const todayStr = new Date().toISOString().split('T')[0];
-        document.getElementById('form-start-date').value = todayStr;
-        
-        // Default 3 weeks from today
-        const d = new Date();
-        d.setDate(d.getDate() + 20); // 21 days total inclusive
-        document.getElementById('form-end-date').value = d.toISOString().split('T')[0];
-
-        modalTitle.innerHTML = `<span class="material-symbols-outlined text-primary text-[28px]">calendar_add_on</span> Tambah Jadwal Shift`;
-        
-        modal.classList.remove('opacity-0', 'pointer-events-none');
-        modalCard.classList.remove('scale-95');
-        modalCard.classList.add('scale-100');
+    function openWeeklyRosterModal() {
+        weeklyModal.classList.remove('opacity-0', 'pointer-events-none');
+        weeklyModalCard.classList.remove('scale-95');
+        weeklyModalCard.classList.add('scale-100');
     }
 
-    function openEditModal(id, empId, shiftName, startTime, endTime, startDate, endDate) {
-        document.getElementById('form-action').value = 'edit';
-        document.getElementById('form-schedule-id').value = id;
-        document.getElementById('form-employee-id').value = empId;
-        document.getElementById('form-shift-name').value = shiftName;
-        document.getElementById('form-start-time').value = startTime;
-        document.getElementById('form-end-time').value = endTime;
-        document.getElementById('form-start-date').value = startDate;
-        document.getElementById('form-end-date').value = endDate;
-
-        modalTitle.innerHTML = `<span class="material-symbols-outlined text-primary text-[28px]">edit_calendar</span> Edit Jadwal Shift`;
-
-        modal.classList.remove('opacity-0', 'pointer-events-none');
-        modalCard.classList.remove('scale-95');
-        modalCard.classList.add('scale-100');
+    function closeWeeklyRosterModal() {
+        weeklyModal.classList.add('opacity-0', 'pointer-events-none');
+        weeklyModalCard.classList.remove('scale-100');
+        weeklyModalCard.classList.add('scale-95');
     }
 
-    function closeModal() {
-        modal.classList.add('opacity-0', 'pointer-events-none');
-        modalCard.classList.remove('scale-100');
-        modalCard.classList.add('scale-95');
-    }
-
-    function setPreset(name, start, end) {
-        document.getElementById('form-shift-name').value = name;
-        document.getElementById('form-start-time').value = start;
-        document.getElementById('form-end-time').value = end;
-    }
-
-    function set3WeeksDuration() {
-        const startVal = document.getElementById('form-start-date').value;
-        if (startVal) {
-            const startDate = new Date(startVal);
-            startDate.setDate(startDate.getDate() + 20); // 21 days (3 weeks)
-            document.getElementById('form-end-date').value = startDate.toISOString().split('T')[0];
-        }
+    function setAllWeeklyShifts(shiftVal) {
+        document.querySelectorAll('.weekly-shift-select').forEach(select => {
+            select.value = shiftVal;
+        });
     }
 
     function confirmDelete(id, empName, shiftName) {
         Swal.fire({
-            title: 'Hapus Jadwal Shift?',
-            text: `Apakah Anda yakin ingin menghapus ${shiftName} untuk ${empName}?`,
+            title: 'Hapus Shift?',
+            text: `Apakah Anda yakin ingin menghapus shift ${shiftName} untuk ${empName}?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#BA1A1A',
@@ -480,11 +501,18 @@
 
     function filterSchedules() {
         const query = document.getElementById('search-schedule-input').value.toLowerCase();
+        const selectedEmpId = document.getElementById('filter-employee-select').value;
         const rows = document.querySelectorAll('.schedule-row');
+
         rows.forEach(row => {
+            const empId = row.getAttribute('data-empid');
             const name = row.getAttribute('data-name').toLowerCase();
             const shift = row.getAttribute('data-shift').toLowerCase();
-            if (name.includes(query) || shift.includes(query)) {
+            
+            const matchesEmp = (!selectedEmpId || empId === selectedEmpId);
+            const matchesQuery = (!query || name.includes(query) || shift.includes(query));
+
+            if (matchesEmp && matchesQuery) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
