@@ -111,6 +111,15 @@ class Attendance(models.Model):
     device_information = models.TextField(null=True, blank=True)
     browser_information = models.TextField(null=True, blank=True)
 
+    @property
+    def face_accuracy_percent(self):
+        if self.face_confidence_score is not None:
+            score = self.face_confidence_score
+            if score <= 1.0:
+                return f"{int(round(score * 100))}%"
+            return f"{int(round(score))}%"
+        return "-"
+
     def __str__(self):
         return f"{self.employee.fullname} - {self.type} - {self.timestamp}"
 

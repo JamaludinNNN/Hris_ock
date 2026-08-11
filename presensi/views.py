@@ -1,11 +1,9 @@
 from django.shortcuts import render, redirect
-from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Employee, Attendance, Branch, FaceData, Schedule
 from django.contrib.auth import get_user_model
 from .settings_helper import load_system_settings, save_system_settings
-import random
 import math
 from decimal import Decimal, InvalidOperation
 import json
@@ -232,7 +230,6 @@ def presensi_view(request):
         lat_val = request.POST.get('latitude')
         lon_val = request.POST.get('longitude')
         gps_accuracy_val = request.POST.get('gps_accuracy')
-        distance_val = request.POST.get('distance_from_office')
         face_score_val = request.POST.get('face_confidence_score')
         liveness_res = request.POST.get('liveness_result')
         device_info = request.POST.get('device_information')
@@ -450,6 +447,15 @@ def presensi_view(request):
         )
         return redirect('presensi')
         
+    # Fetch today's schedule for current employee
+    today_schedule = Schedule.objects.filter(employee=employee, date=today).first()
+    if not today_schedule:
+        today_schedule = Schedule.objects.filter(
+            employee=employee,
+            start_date__lte=today,
+            end_date__gte=today
+        ).first()
+
     # Calculate today's working duration for display
     today_attendances = Attendance.objects.filter(employee=employee, timestamp__date=today).order_by('timestamp')
     check_in_today = today_attendances.filter(type='in').first()
@@ -495,6 +501,7 @@ def presensi_view(request):
         'work_status': work_status,
         'check_in_today': check_in_today,
         'check_out_today': check_out_today,
+        'today_schedule': today_schedule,
         'office_lat': default_lat,
         'office_lon': default_lon,
         'geofence_radius': default_radius,
@@ -675,15 +682,15 @@ def tambah_karyawan(request):
 
 @login_required(login_url='login')
 def laporan(request):
-    
     # Karyawan can only view their own presence reports; HRD/Admin can view all
     if not is_hrd(request.user):
-        if hasattr(request.user, 'employee_profile'):
-            attendances = Attendance.objects.filter(employee=request.user.employee_profile)
+        employee = getattr(request.user, 'employee_profile', None)
+        if employee:
+            attendances = Attendance.objects.filter(employee=employee).select_related('employee', 'branch')
         else:
             attendances = Attendance.objects.none()
     else:
-        attendances = Attendance.objects.all()
+        attendances = Attendance.objects.select_related('employee', 'branch').all()
         
     # Apply date filter if provided
     selected_date = request.GET.get('date', '')
@@ -699,8 +706,12 @@ def laporan(request):
     total_hadir = attendances.filter(type='in').count()
     terlambat = attendances.filter(status='late').count()
     
-    # Calculate attendance rate
-    attendance_rate = 96.5 if total_hadir else 0.0
+    total_records = attendances.count()
+    if total_records > 0:
+        on_time_count = attendances.filter(status='on_time').count()
+        attendance_rate = round((on_time_count / total_records) * 100.0, 1)
+    else:
+        attendance_rate = 0.0
     
     context = {
         'attendances': attendances,
